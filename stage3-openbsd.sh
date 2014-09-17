@@ -1,11 +1,11 @@
 
-if [ `uname -s` != "DragonFly" ]; then
-  echo "You have to run this on DragonFly!"
+if [ `uname -s` != "OpenBSD" ]; then
+  echo "You have to run this on Openbsd!"
   exit 1
 fi
 
-if [ ! -e "stage1-dragonfly/libs" ]; then
-  echo "stage1-dragonfly does not exist!"
+if [ ! -e "stage1-openbsd/libs" ]; then
+  echo "stage1-openbsd does not exist!"
   exit 1
 fi
 
@@ -23,13 +23,13 @@ LLVM_LIBS="-lLLVMLTO -lLLVMObjCARCOpts -lLLVMLinker -lLLVMipo -lLLVMVectorize -l
 
 RUST_DEPS="$RL/librustc.rlib $RL/libtime.rlib $RL/librustc_llvm.rlib $RL/libarena.rlib $RL/libgetopts.rlib $RL/librustc_back.rlib $RL/libsyntax.rlib $RL/libserialize.rlib $RL/librbml.rlib $RL/libdebug.rlib $RL/libflate.rlib $RL/libterm.rlib $RL/liblog.rlib $RL/libnative.rlib $RL/libgraphviz.rlib $RL/libfmt_macros.rlib $RL/libstd.rlib $RL/libsync.rlib $RL/librustrt.rlib $RL/libcollections.rlib $RL/libunicode.rlib $RL/liballoc.rlib $RL/liblibc.rlib $RL/librand.rlib $RL/libcore.rlib"
 
-mkdir -p stage3-dragonfly/bin
-mkdir -p stage3-dragonfly/lib
+mkdir -p stage3-openbsd/bin
+mkdir -p stage3-openbsd/lib
 
-cc -o stage3-dragonfly/bin/rustc stage2-linux/driver.o ${RUST_DEPS} -L./stage1-dragonfly/libs/llvm -L./stage1-dragonfly/libs $SUP_LIBS $LLVM_LIBS -lrt -lpthread -lgcc_pic -lc -lm -lz -ledit -ltinfo -lstdc++ 
+cc -o stage3-openbsd/bin/rustc stage2-linux/driver.o ${RUST_DEPS} -L./stage1-openbsd/libs/llvm -L./stage1-openbsd/libs $SUP_LIBS $LLVM_LIBS -lrt -lpthread -lgcc_pic -lc -lm -lz -ledit -ltinfo -lstdc++ 
 
-cp stage1-dragonfly/libs/libcompiler-rt.a stage3-dragonfly/lib
-cp stage1-dragonfly/libs/libmorestack.a stage3-dragonfly/lib
-cp stage2-linux/rust-libs/*.rlib stage3-dragonfly/lib
+cp stage1-openbsd/libs/libcompiler-rt.a stage3-openbsd/lib
+cp stage1-openbsd/libs/libmorestack.a stage3-openbsd/lib
+cp stage2-linux/rust-libs/*.rlib stage3-openbsd/lib
 
-./stage3-dragonfly/bin/rustc -Lstage3-dragonfly/lib hw.rs && ./hw
+./stage3-openbsd/bin/rustc -Lstage3-openbsd/lib hw.rs && ./hw

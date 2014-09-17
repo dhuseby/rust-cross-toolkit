@@ -6,7 +6,7 @@ index 4a8226b..e8cb69a 100755
  
  	force_lazy_lock="1"
  	;;
-+  *-*-dragonfly*)
++  *-*-openbsd*)
 +	CFLAGS="$CFLAGS"
 +	abi="elf"
 +	$as_echo "#define JEMALLOC_PURGE_MADVISE_FREE  " >>confdefs.h
@@ -22,7 +22,7 @@ index 48863a5..c031fcf 100644
  	AC_DEFINE([JEMALLOC_PURGE_MADVISE_FREE], [ ])
  	force_lazy_lock="1"
  	;;
-+  *-*-dragonfly*)
++  *-*-openbsd*)
 +	CFLAGS="$CFLAGS"
 +	abi="elf"
 +	AC_DEFINE([JEMALLOC_PURGE_MADVISE_FREE], [ ])

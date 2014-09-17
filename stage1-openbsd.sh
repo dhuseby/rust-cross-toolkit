@@ -1,12 +1,12 @@
 #!/bin/sh
 
-if [ `uname -s` != "DragonFly" ]; then
-  echo "You have to run this on DragonFly!"
+if [ `uname -s` != "OpenBSD" ]; then
+  echo "You have to run this on OpenBSD!"
   exit 1
 fi
 
-mkdir -p stage1-dragonfly
-cd stage1-dragonfly
+mkdir -p stage1-openbsd
+cd stage1-openbsd
 
 TOP=`pwd`
 
@@ -22,13 +22,6 @@ mkdir -p ${TARGET}
 echo "-- TOP: ${TOP}"
 echo "-- TARGET: ${TARGET}"
 echo "-- LLVM_TARGET: ${LLVM_TARGET}"
-
-###
-# "git submodule" does not work on DragonFly as it does not 
-# find perl in /usr/bin/perl. To make it work:
-#
-#     ln -s /usr/local/bin/perl /usr/bin/perl
-##
 
 git clone https://github.com/rust-lang/rust.git
 cd rust
@@ -56,7 +49,7 @@ cp librustllvm.a ${TARGET}
 cd ${TOP}/rust/src/compiler-rt
 cmake -DLLVM_CONFIG_PATH=${LLVM_TARGET}/bin/llvm-config
 make
-cp ./lib/dragonfly/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
+cp ./lib/openbsd/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
 
 
 cd ${TOP}/rust/src
@@ -112,7 +105,7 @@ patch -p1 < ${TOP}/../patch-jemalloc
 gmake
 cp lib/libjemalloc.a ${TARGET}
 
-# Copy Dragonfly system libraries
+# Copy Openbsd system libraries
 
 mkdir -p ${TARGET}/lib
 mkdir -p ${TARGET}/usr/lib
@@ -121,11 +114,11 @@ cp -r /usr/lib ${TARGET}/usr/lib
 
 # 
 cd ${TOP}/..
-python ${TOP}/rust/src/etc/mklldeps.py stage1-dragonfly/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser jit mcjit interpreter instrumentation" true "${LLVM_TARGET}/bin/llvm-config"
+python ${TOP}/rust/src/etc/mklldeps.py stage1-openbsd/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser jit mcjit interpreter instrumentation" true "${LLVM_TARGET}/bin/llvm-config"
 
 cd ${TOP}/..
-tar cvzf stage1-dragonfly.tgz stage1-dragonfly/${TARGET_SUB} stage1-dragonfly/llvmdeps.rs
+tar cvzf stage1-openbsd.tgz stage1-openbsd/${TARGET_SUB} stage1-openbsd/llvmdeps.rs
 
 
 
-echo "Please copy stage1-dragonfly.tgz onto your Linux machine and extract it"
+echo "Please copy stage1-openbsd.tgz onto your Linux machine and extract it"

@@ -15,8 +15,8 @@ if [ ! -e "stage1-linux/install" ]; then
   exit 1
 fi
 
-if [ ! -e "stage1-dragonfly/libs" ]; then
-  echo "need stage1-dragonfly/libs!"
+if [ ! -e "stage1-openbsd/libs" ]; then
+  echo "need stage1-openbsd/libs!"
   exit 1
 fi
 
@@ -25,9 +25,9 @@ TOP=`pwd`
 RUST_PREFIX=${TOP}/stage1-linux/install
 RUST_SRC=${TOP}/stage2-linux/rust
 RUSTC=${RUST_PREFIX}/bin/rustc
-TARGET=x86_64-unknown-dragonfly
+TARGET=x86_64-unknown-openbsd
 
-DF_LIB_DIR=${TOP}/stage1-dragonfly/libs
+DF_LIB_DIR=${TOP}/stage1-openbsd/libs
 RS_LIB_DIR=${TOP}/stage2-linux/rust-libs
 
 export LD_LIBRARY_PATH=${RUST_PREFIX}/lib
@@ -41,14 +41,14 @@ if [ ! -e ${TOP}/stage2-linux/rust ]; then
   cd ${TOP}
 fi
 
-cp ${TOP}/stage1-dragonfly/llvmdeps.rs ${TOP}/stage2-linux/rust/src/librustc_llvm/
+cp ${TOP}/stage1-openbsd/llvmdeps.rs ${TOP}/stage2-linux/rust/src/librustc_llvm/
 
 # XXX
 export CFG_VERSION="0.12.0-pre-nightly"
-export CFG_RELEASE="dragonfly-cross"
+export CFG_RELEASE="openbsd-cross"
 export CFG_VER_HASH="hash"
 export CFG_VER_DATE="`date`"
-export CFG_COMPILER_HOST_TRIPLE="x86_64-unknown-dragonfly"
+export CFG_COMPILER_HOST_TRIPLE="x86_64-unknown-openbsd"
 export CFG_PREFIX="/usr/local"
 
 RUST_FLAGS="--cfg jemalloc"
