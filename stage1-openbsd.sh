@@ -10,6 +10,8 @@ cd stage1-openbsd
 
 TOP=`pwd`
 
+AUTOMAKE_VERSION=1.12
+
 TARGET_SUB=libs
 TARGET=${TOP}/${TARGET_SUB}
 
@@ -32,7 +34,7 @@ patch -p1 < ${TOP}/../patch-llvm
 cd ..
 mkdir llvm-build
 cd llvm-build
-../llvm/configure --prefix=${LLVM_TARGET}
+../llvm/configure --prefix=${LLVM_TARGET} #--disable-compiler-version-checks
 gmake ENABLE_OPTIMIZED=1
 gmake ENABLE_OPTIMIZED=1 install
 
