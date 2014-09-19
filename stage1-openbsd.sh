@@ -15,7 +15,7 @@ TARGET=${TOP}/${TARGET_SUB}
 
 CC=cc
 CXX="g++"
-LLVM_TARGET="${TOP}/llvm-install"
+LLVM_TARGET="/usr/local/"
 
 mkdir -p ${TARGET}
 
@@ -48,7 +48,7 @@ cp librustllvm.a ${TARGET}
 # build libcompiler-rt.a
 cd ${TOP}/rust/src/compiler-rt
 cmake -DLLVM_CONFIG_PATH=${LLVM_TARGET}/bin/llvm-config
-make
+gmake
 cp ./lib/openbsd/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
 
 
@@ -56,7 +56,7 @@ cd ${TOP}/rust/src
 ln -s libbacktrace include
 cd libbacktrace
 ./configure
-make
+gmake
 cp .libs/libbacktrace.a ${TARGET}
 cd ..
 unlink include
@@ -65,7 +65,7 @@ unlink include
 cd ${TOP}/rust/src/libuv
 sh autogen.sh
 ./configure
-make
+gmake
 cp .libs/libuv.a ${TARGET}
 
 cd ${TOP}/rust/src/rt
@@ -97,13 +97,6 @@ ar rcs ${TARGET}/libuv_support.a rust_uv.o
 cd ${TOP}/rust/src/rt/hoedown
 gmake libhoedown.a 
 cp libhoedown.a ${TARGET}
-
-cd ${TOP}/rust/src/jemalloc
-patch -p1 < ${TOP}/../patch-jemalloc
-./configure --enable-xmalloc --with-jemalloc-prefix=je_
-#--enable-utrace --enable-debug --enable-ivsalloc
-gmake
-cp lib/libjemalloc.a ${TARGET}
 
 # Copy Openbsd system libraries
 

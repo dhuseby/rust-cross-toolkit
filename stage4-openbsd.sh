@@ -28,8 +28,6 @@ cd ${TOP}/stage4-openbsd/rust
 ./configure --enable-local-rust --local-rust-root=${TOP}/stage3-openbsd --prefix=/usr/local
 cd src/llvm
 patch -p1 < ${TOP}/patch-llvm
-cd ../jemalloc
-patch -p1 < ${TOP}/patch-jemalloc
 cd ../..
 
 gmake

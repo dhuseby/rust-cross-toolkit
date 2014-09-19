@@ -51,8 +51,6 @@ export CFG_VER_DATE="`date`"
 export CFG_COMPILER_HOST_TRIPLE="x86_64-unknown-openbsd"
 export CFG_PREFIX="/usr/local"
 
-RUST_FLAGS="--cfg jemalloc"
-
 RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena rustuv debug log fmt_macros serialize term syntax flate time url uuid getopts regex test coretest glob graphviz num rustc_back semver rustc_llvm rbml rustc fourcc hexfloat regex_macros green rustdoc"
 
 # compile rust libraries

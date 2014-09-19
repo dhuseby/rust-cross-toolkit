@@ -15,9 +15,8 @@ cd rust
 ./configure --prefix=${TOP}/install
 cd src/llvm
 patch -p1 < ${TOP}/../patch-llvm
-cd ../jemalloc
-patch -p1 < ${TOP}/../patch-jemalloc
 cd ../..
 
+echo $PWD
 make
 make install

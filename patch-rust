@@ -1,0 +1,350 @@
+diff --git a/configure b/configure
+index 3d8f0d8..440fce9 100755
+--- a/configure
++++ b/configure
+@@ -294,7 +294,9 @@ case $CFG_OSTYPE in
+     DragonFly)
+         CFG_OSTYPE=unknown-dragonfly
+         ;;
+-
++    OpenBSD)
++	CFG_OSTYPE=unknown-openbsd
++	;;
+     Darwin)
+         CFG_OSTYPE=apple-darwin
+         ;;
+@@ -594,7 +596,7 @@ then
+ fi
+ 
+ # Force freebsd to build with clang; gcc doesn't like us there
+-if [ $CFG_OSTYPE = unknown-freebsd ]
++if [ $CFG_OSTYPE = unknown-freebsd -o $CFG_OSTYPE = unknown-openbsd ]
+ then
+     step_msg "on FreeBSD, forcing use of clang"
+     CFG_ENABLE_CLANG=1
+@@ -635,12 +637,14 @@ then
+             }
+             # check that gcc, cc and g++ all point to the same compiler.
+             # note that for xcode 5, g++ points to clang, not clang++
+-            if !((chk_cc gcc clang  && chk_cc g++ clang) ||
+-                (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))) then
+-                err "the gcc and g++ in your path point to different compilers.
+-    Check which versions are in your path with gcc --version and g++ --version.
+-    To resolve this problem, either fix your PATH  or run configure with --enable-clang"
+-            fi
++         if !((chk_cc gcc clang  && chk_cc g++ clang) ||
++            (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc)))
++        then
++            err "the gcc and g++ in your path point to different compilers. \
+++Check which versions are in your path with  cc --version and g++ --version. \
++ To resolve this problem, either fix your PATH  or run configure with --enable-clang"
++
++       fi
+ 
+         fi
+     fi
+diff --git a/mk/platform.mk b/mk/platform.mk
+index 77876f2..cd8446d 100644
+--- a/mk/platform.mk
++++ b/mk/platform.mk
+@@ -552,6 +552,32 @@ CFG_LDPATH_x86_64-unknown-freebsd :=
+ CFG_RUN_x86_64-unknown-freebsd=$(2)
+ CFG_RUN_TARG_x86_64-unknown-freebsd=$(call CFG_RUN_x86_64-unknown-freebsd,,$(2))
+ 
++# x86_64-unknown-openbsd configuration
++CC_x86_64-unknown-openbsd=$(CC)
++CXX_x86_64-unknown-openbsd=$(CXX)
++CPP_x86_64-unknown-openbsd=$(CPP)
++AR_x86_64-unknown-openbsd=$(AR)
++CFG_LIB_NAME_x86_64-unknown-openbsd=lib$(1).so
++CFG_STATIC_LIB_NAME_x86_64-unknown-openbsd=lib$(1).a
++CFG_LIB_GLOB_x86_64-unknown-openbsd=lib$(1)-*.so
++CFG_LIB_DSYM_GLOB_x86_64-unknown-openbsd=$(1)-*.dylib.dSYM
++CFG_GCCISH_CFLAGS_x86_64-unknown-openbsd := -Wall -Werror -g -fPIC -I/usr/local/include
++CFG_GCCISH_LINK_FLAGS_x86_64-unknown-openbsd := -shared -fPIC -g -pthread  -lrt
++CFG_GCCISH_DEF_FLAG_x86_64-unknown-openbsd := -Wl,--export-dynamic,--dynamic-list=
++CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-openbsd := -Wl,-whole-archive
++CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-openbsd := -Wl,-no-whole-archive
++CFG_DEF_SUFFIX_x86_64-unknown-openbsd := .bsd.def
++CFG_LLC_FLAGS_x86_64-unknown-openbsd :=
++CFG_INSTALL_NAME_x86_64-unknown-openbsd =
++CFG_LIBUV_LINK_FLAGS_x86_64-unknown-openbsd := -pthread  -lkvm
++CFG_EXE_SUFFIX_x86_64-unknown-openbsd :=
++CFG_WINDOWSY_x86_64-unknown-openbsd :=
++CFG_UNIXY_x86_64-unknown-openbsd := 1
++CFG_PATH_MUNGE_x86_64-unknown-openbsd :=
++CFG_LDPATH_x86_64-unknown-openbsd :=
++CFG_RUN_x86_64-unknown-openbsd=$(2)
++CFG_RUN_TARG_x86_64-unknown-openbsd=$(call CFG_RUN_x86_64-unknown-openbsd,,$(2))
++
+ # x86_64-pc-dragonfly-elf configuration
+ CC_x86_64-unknown-dragonfly=$(CC)
+ CXX_x86_64-unknown-dragonfly=$(CXX)
+diff --git a/mk/rt.mk b/mk/rt.mk
+index 63bfc4e..b5e249a 100644
+--- a/mk/rt.mk
++++ b/mk/rt.mk
+@@ -175,6 +175,8 @@ else ifeq ($(OSTYPE_$(1)), unknown-dragonfly)
+   LIBUV_OSTYPE_$(1) := freebsd
+   # required on DragonFly, otherwise gyp fails with a Python exception
+   LIBUV_GYP_ARGS_$(1) := --no-parallel
++else ifeq ($(OSTYPE_$(1)), unknown-openbsd)
++  LIBUV_OSTYPE_$(1) := openbsd
+ else ifeq ($(OSTYPE_$(1)), linux-androideabi)
+   LIBUV_OSTYPE_$(1) := android
+   LIBUV_ARGS_$(1) := PLATFORM=android host=android OS=linux
+diff --git a/src/jemalloc b/src/jemalloc
+--- a/src/jemalloc
++++ b/src/jemalloc
+@@ -1 +1 @@
+-Subproject commit 2dba541881fb8e35246d653bbe2e7c7088777a4a
++Subproject commit 2dba541881fb8e35246d653bbe2e7c7088777a4a-dirty
+diff --git a/src/librustc/back/link.rs b/src/librustc/back/link.rs
+index de1eef1..a44c77d 100644
+--- a/src/librustc/back/link.rs
++++ b/src/librustc/back/link.rs
+@@ -493,6 +493,7 @@ pub fn filename_for_input(sess: &Session,
+                 abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
+                 abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
+                 abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
++                abi::OsOpenbsd => (loader::OPENBSD_DLL_PREFIX, loader::OPENBSD_DLL_SUFFIX),
+                 abi::OsDragonfly => (loader::DRAGONFLY_DLL_PREFIX, loader::DRAGONFLY_DLL_SUFFIX),
+                 abi::OsiOS => unreachable!(),
+             };
+@@ -511,6 +512,7 @@ pub fn filename_for_input(sess: &Session,
+                 abi::OsLinux |
+                 abi::OsAndroid |
+                 abi::OsFreebsd |
++		abi::OsOpenbsd |
+                 abi::OsDragonfly |
+                 abi::OsiOS => out_filename.clone(),
+             }
+@@ -1098,6 +1100,8 @@ fn link_args(cmd: &mut Command,
+                   "-L/usr/local/lib/gcc46",
+                   "-L/usr/local/lib/gcc44"]);
+     }
++    else if sess.targ_cfg.os == abi::OsOpenbsd {
++        cmd.args(["-L/usr/local/lib/gcc/x86_64-unknown-openbsd5.6/4.9.1"]);
+     else if sess.targ_cfg.os == abi::OsDragonfly {
+         cmd.args(["-L/usr/local/lib",
+                   "-L/usr/lib/gcc47",
+diff --git a/src/librustc/metadata/loader.rs b/src/librustc/metadata/loader.rs
+index f63705b..a8fe781 100644
+--- a/src/librustc/metadata/loader.rs
++++ b/src/librustc/metadata/loader.rs
+@@ -252,6 +252,9 @@ pub static LINUX_DLL_SUFFIX: &'static str = ".so";
+ pub static FREEBSD_DLL_PREFIX: &'static str = "lib";
+ pub static FREEBSD_DLL_SUFFIX: &'static str = ".so";
+ 
++pub static OPENBSD_DLL_PREFIX: &'static str = "lib";
++pub static OPENBSD_DLL_SUFFIX: &'static str = ".so";
++
+ pub static DRAGONFLY_DLL_PREFIX: &'static str = "lib";
+ pub static DRAGONFLY_DLL_SUFFIX: &'static str = ".so";
+ 
+@@ -621,6 +624,7 @@ impl<'a> Context<'a> {
+             abi::OsLinux => Some((LINUX_DLL_PREFIX, LINUX_DLL_SUFFIX)),
+             abi::OsAndroid => Some((ANDROID_DLL_PREFIX, ANDROID_DLL_SUFFIX)),
+             abi::OsFreebsd => Some((FREEBSD_DLL_PREFIX, FREEBSD_DLL_SUFFIX)),
++            abi::OsOpenbsd => Some((OPENBSD_DLL_PREFIX, OPENBSD_DLL_SUFFIX)),
+             abi::OsDragonfly => Some((DRAGONFLY_DLL_PREFIX, DRAGONFLY_DLL_SUFFIX)),
+             abi::OsiOS => None,
+         }
+@@ -829,6 +833,7 @@ pub fn meta_section_name(os: abi::Os) -> Option<&'static str> {
+         abi::OsLinux => Some(".note.rustc"),
+         abi::OsAndroid => Some(".note.rustc"),
+         abi::OsFreebsd => Some(".note.rustc"),
++        abi::OsOpenbsd => Some(".note.rustc"),
+         abi::OsDragonfly => Some(".note.rustc"),
+     }
+ }
+@@ -841,6 +846,7 @@ pub fn read_meta_section_name(os: abi::Os) -> &'static str {
+         abi::OsLinux => ".note.rustc",
+         abi::OsAndroid => ".note.rustc",
+         abi::OsFreebsd => ".note.rustc",
++        abi::OsOpenbsd => ".note.rustc",
+         abi::OsDragonfly => ".note.rustc"
+     }
+ }
+diff --git a/src/libstd/dynamic_lib.rs b/src/libstd/dynamic_lib.rs
+index e929f14..181bc03 100644
+--- a/src/libstd/dynamic_lib.rs
++++ b/src/libstd/dynamic_lib.rs
+@@ -193,6 +193,7 @@ mod test {
+     #[cfg(target_os = "linux")]
+     #[cfg(target_os = "macos")]
+     #[cfg(target_os = "freebsd")]
++    #[cfg(target_os = "openbsd")]
+     #[cfg(target_os = "dragonfly")]
+     fn test_errors_do_not_crash() {
+         // Open /dev/null as a library to get an error, and make sure
+@@ -210,6 +211,7 @@ mod test {
+ #[cfg(target_os = "macos")]
+ #[cfg(target_os = "ios")]
+ #[cfg(target_os = "freebsd")]
++#[cfg(target_os = "openbsd")]
+ #[cfg(target_os = "dragonfly")]
+ pub mod dl {
+ 
+diff --git a/src/libstd/os.rs b/src/libstd/os.rs
+index f1480eb..00abc52 100644
+--- a/src/libstd/os.rs
++++ b/src/libstd/os.rs
+@@ -653,6 +653,7 @@ pub fn self_exe_name() -> Option<Path> {
+ 
+     #[cfg(target_os = "freebsd")]
+     #[cfg(target_os = "dragonfly")]
++    #[cfg(target_os = "openbsd")]
+     fn load_self() -> Option<Vec<u8>> {
+         unsafe {
+             use libc::funcs::bsd44::*;
+@@ -906,6 +907,7 @@ pub fn errno() -> int {
+     #[cfg(target_os = "macos")]
+     #[cfg(target_os = "ios")]
+     #[cfg(target_os = "freebsd")]
++    #[cfg(target_os = "openbsd")]
+     fn errno_location() -> *const c_int {
+         extern {
+             fn __error() -> *const c_int;
+@@ -973,6 +975,7 @@ pub fn error_string(errnum: uint) -> String {
+         #[cfg(target_os = "ios")]
+         #[cfg(target_os = "android")]
+         #[cfg(target_os = "freebsd")]
++        #[cfg(target_os = "openbsd")]
+         #[cfg(target_os = "dragonfly")]
+         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
+                       -> c_int {
+@@ -1180,6 +1183,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+ #[cfg(target_os = "linux")]
+ #[cfg(target_os = "android")]
+ #[cfg(target_os = "freebsd")]
++#[cfg(target_os = "openbsd")]
+ #[cfg(target_os = "dragonfly")]
+ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+     use rt;
+@@ -1781,6 +1785,37 @@ pub mod consts {
+     pub static EXE_EXTENSION: &'static str = "";
+ }
+ 
++#[cfg(target_os = "openbsd")]
++pub mod consts {
++    pub use os::arch_consts::ARCH;
++
++    pub static FAMILY: &'static str = "unix";
++
++    /// A string describing the specific operating system in use: in this
++    /// case, `openbsd`.
++    pub static SYSNAME: &'static str = "openbsd";
++
++    /// Specifies the filename prefix used for shared libraries on this
++    /// platform: in this case, `lib`.
++    pub static DLL_PREFIX: &'static str = "lib";
++
++    /// Specifies the filename suffix used for shared libraries on this
++    /// platform: in this case, `.so`.
++    pub static DLL_SUFFIX: &'static str = ".so";
++
++    /// Specifies the file extension used for shared libraries on this
++    /// platform that goes after the dot: in this case, `so`.
++    pub static DLL_EXTENSION: &'static str = "so";
++
++    /// Specifies the filename suffix used for executable binaries on this
++    /// platform: in this case, the empty string.
++    pub static EXE_SUFFIX: &'static str = "";
++
++    /// Specifies the file extension, if any, used for executable binaries
++    /// on this platform: in this case, the empty string.
++    pub static EXE_EXTENSION: &'static str = "";
++}
++
+ #[cfg(target_os = "dragonfly")]
+ pub mod consts {
+     pub use os::arch_consts::ARCH;
+diff --git a/src/libstd/rt/backtrace.rs b/src/libstd/rt/backtrace.rs
+index 5557ef9..0290a0a 100644
+--- a/src/libstd/rt/backtrace.rs
++++ b/src/libstd/rt/backtrace.rs
+@@ -475,6 +475,7 @@ mod imp {
+             static mut LAST_FILENAME: [libc::c_char, ..256] = [0, ..256];
+             if !STATE.is_null() { return STATE }
+             let selfname = if cfg!(target_os = "freebsd") ||
++	    		      cfg!(target_os = "openbsd") ||
+                               cfg!(target_os = "dragonfly") {
+                 os::self_exe_name()
+             } else {
+diff --git a/src/libstd/rtdeps.rs b/src/libstd/rtdeps.rs
+index 35a8713..126a1ba 100644
+--- a/src/libstd/rtdeps.rs
++++ b/src/libstd/rtdeps.rs
+@@ -39,6 +39,11 @@ extern {}
+ #[link(name = "pthread")]
+ extern {}
+ 
++#[cfg(target_os = "openbsd")]
++#[link(name = "execinfo")]
++#[link(name = "pthread")]
++extern {}
++
+ #[cfg(target_os = "dragonfly")]
+ #[link(name = "pthread")]
+ extern {}
+diff --git a/src/libsyntax/abi.rs b/src/libsyntax/abi.rs
+index 6d9b882..e0d8fc1 100644
+--- a/src/libsyntax/abi.rs
++++ b/src/libsyntax/abi.rs
+@@ -12,7 +12,7 @@ use std::fmt;
+ 
+ #[deriving(PartialEq)]
+ pub enum Os { OsWindows, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsiOS,
+-              OsDragonfly }
++              OsDragonfly, OsOpenbsd }
+ 
+ #[deriving(PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
+ pub enum Abi {
+@@ -152,6 +152,7 @@ impl fmt::Show for Os {
+             OsiOS => "ios".fmt(f),
+             OsAndroid => "android".fmt(f),
+             OsFreebsd => "freebsd".fmt(f),
++            OsOpenbsd => "openbsd".fmt(f),
+             OsDragonfly => "dragonfly".fmt(f)
+         }
+     }
+diff --git a/src/llvm b/src/llvm
+--- a/src/llvm
++++ b/src/llvm
+@@ -1 +1 @@
+-Subproject commit e9d037419441d51ccb0f41aacbc64080b0c6e81b
++Subproject commit e9d037419441d51ccb0f41aacbc64080b0c6e81b-dirty
+diff --git a/src/rt/arch/x86_64/morestack.S b/src/rt/arch/x86_64/morestack.S
+index c82da57..7c814eb 100644
+--- a/src/rt/arch/x86_64/morestack.S
++++ b/src/rt/arch/x86_64/morestack.S
+@@ -15,13 +15,13 @@
+ 
+ #if defined(__APPLE__)
+ #define EXHAUSTED               _rust_stack_exhausted
+-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
++#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
+ #define EXHAUSTED               rust_stack_exhausted@PLT
+ #else
+ #define EXHAUSTED               rust_stack_exhausted
+ #endif
+ 
+-#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
++#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
+ 	.hidden MORESTACK
+ #else
+ #if defined(__APPLE__)
+diff --git a/src/rt/rust_builtin.c b/src/rt/rust_builtin.c
+index 5dc07f8..c121712 100644
+--- a/src/rt/rust_builtin.c
++++ b/src/rt/rust_builtin.c
+@@ -70,7 +70,7 @@ extern char **environ;
+ #endif
+ #endif
+ 
+-#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__)
++#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__) || defined(__OpenBSD__)
+ extern char **environ;
+ #endif
+ 
