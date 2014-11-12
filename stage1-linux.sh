@@ -22,6 +22,14 @@ if [ ! -e .patched ]; then
 else
   echo "Rust already patched on:" `cat .patched`
 fi
+cd src/jemalloc
+if [ ! -e .patched ]; then
+  patch -p1 < ${TOP}/../patch-jemalloc
+  date > .patched
+else
+  echo "jemalloc already patched on:" `cat .patched`
+fi
+cd ../..
 ./configure --prefix=${TOP}/install
 cd src/llvm
 if [ ! -e .patched ]; then

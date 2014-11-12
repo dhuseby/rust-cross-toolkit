@@ -589,12 +589,6 @@ index 912755d..1d5b18f 100644
  #[allow(non_snake_case)]
  #[test]
  fn lookup_Rust() {
-diff --git a/src/llvm b/src/llvm
---- a/src/llvm
-+++ b/src/llvm
-@@ -1 +1 @@
--Subproject commit ec1fdb3b9d3b1fb9e1dae97a65dd3a13db9bfb23
-+Subproject commit ec1fdb3b9d3b1fb9e1dae97a65dd3a13db9bfb23-dirty
 diff --git a/src/rt/arch/i386/morestack.S b/src/rt/arch/i386/morestack.S
 index 2f03251..312e1e8 100644
 --- a/src/rt/arch/i386/morestack.S
