@@ -25,7 +25,7 @@ TOP=`pwd`
 RUST_PREFIX=${TOP}/stage1-linux/install
 RUST_SRC=${TOP}/stage2-linux/rust
 RUSTC=${RUST_PREFIX}/bin/rustc
-TARGET=x86_64-unknown-openbsd
+TARGET=i386-unknown-openbsd
 
 DF_LIB_DIR=${TOP}/stage1-openbsd/libs
 RS_LIB_DIR=${TOP}/stage2-linux/rust-libs
@@ -44,11 +44,11 @@ fi
 cp ${TOP}/stage1-openbsd/llvmdeps.rs ${TOP}/stage2-linux/rust/src/librustc_llvm/
 
 # XXX
-export CFG_VERSION="0.12.0-pre-nightly"
+export CFG_VERSION="0.13.0-dev"
 export CFG_RELEASE="openbsd-cross"
 export CFG_VER_HASH="hash"
 export CFG_VER_DATE="`date`"
-export CFG_COMPILER_HOST_TRIPLE="x86_64-unknown-openbsd"
+export CFG_COMPILER_HOST_TRIPLE="i386-unknown-openbsd"
 export CFG_PREFIX="/usr/local"
 
 RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena rustuv debug log fmt_macros serialize term syntax flate time url uuid getopts regex test coretest glob graphviz num rustc_back semver rustc_llvm rbml rustc fourcc hexfloat regex_macros green rustdoc"

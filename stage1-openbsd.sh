@@ -10,13 +10,18 @@ cd stage1-openbsd
 
 TOP=`pwd`
 
-AUTOMAKE_VERSION=1.12
+AUTOMAKE_VERSION=1.14
 
 TARGET_SUB=libs
 TARGET=${TOP}/${TARGET_SUB}
 
-CC=cc
-CXX="g++"
+export CC="/usr/local/bin/egcc"
+export CXX="/usr/local/bin/eg++"
+export LDFLAGS="-L /usr/local/lib"
+export CXXFLAGS="-I /usr/local/include/c++/4.9.0/"
+export AR="/usr/local/bin/egcc-ar"
+export NM="/usr/local/bin/egcc-nm"
+export RANLIB="/usr/local/bin/egcc-ranlib"
 LLVM_TARGET="/usr/local/"
 
 mkdir -p ${TARGET}
@@ -25,16 +30,29 @@ echo "-- TOP: ${TOP}"
 echo "-- TARGET: ${TARGET}"
 echo "-- LLVM_TARGET: ${LLVM_TARGET}"
 
-git clone https://github.com/rust-lang/rust.git
+if [ ! -d rust ]; then
+  git clone https://github.com/rust-lang/rust.git
+fi
 cd rust
 git submodule init
 git submodule update
+if [ ! -e .patched ]; then
+  patch -p1 < ${TOP}/../patch-rust
+  date > .patched
+else
+  echo "Rust already patched on:" `cat .patched`
+fi
 cd src/llvm
-patch -p1 < ${TOP}/../patch-llvm
+if [ ! -e .patched ]; then
+  patch -p1 < ${TOP}/../patch-llvm
+  date > .patched
+else
+  echo "LLVM already patched on:" `cat .patched`
+fi
 cd ..
-mkdir llvm-build
+mkdir -p llvm-build
 cd llvm-build
-../llvm/configure --prefix=${LLVM_TARGET} #--disable-compiler-version-checks
+../llvm/configure --with-gcc-toolchain=/usr/local/ --prefix=${LLVM_TARGET} #--disable-compiler-version-checks
 gmake ENABLE_OPTIMIZED=1
 gmake ENABLE_OPTIMIZED=1 install
 
@@ -62,13 +80,6 @@ gmake
 cp .libs/libbacktrace.a ${TARGET}
 cd ..
 unlink include
-
-# Or use "pkg ins libuv"
-cd ${TOP}/rust/src/libuv
-sh autogen.sh
-./configure
-gmake
-cp .libs/libuv.a ${TARGET}
 
 cd ${TOP}/rust/src/rt
 ${LLVM_TARGET}/bin/llc rust_try.ll

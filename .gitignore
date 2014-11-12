@@ -2,3 +2,7 @@ df-tree/
 downloads/
 rust-nightly/
 target/
+stage1-linux/
+stage1-openbsd/
+stage2-linux/
+.patched
