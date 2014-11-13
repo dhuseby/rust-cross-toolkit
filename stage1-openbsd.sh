@@ -14,14 +14,15 @@ AUTOMAKE_VERSION=1.14
 
 TARGET_SUB=libs
 TARGET=${TOP}/${TARGET_SUB}
+ARCH=`machine -a`
 
 export CC="/usr/local/bin/egcc"
 export CXX="/usr/local/bin/eg++"
-export LDFLAGS="-L /usr/local/lib"
-export CXXFLAGS="-I /usr/local/include/c++/4.9.0/"
-export AR="/usr/local/bin/egcc-ar"
-export NM="/usr/local/bin/egcc-nm"
-export RANLIB="/usr/local/bin/egcc-ranlib"
+export LDFLAGS="-L/usr/local/lib"
+export CXXFLAGS="-I/usr/local/include/c++/4.9.0/"
+#export AR="/usr/local/bin/egcc-ar"
+#export NM="/usr/local/bin/egcc-nm"
+#export RANLIB="/usr/local/bin/egcc-ranlib"
 LLVM_TARGET=${HOME}
 
 mkdir -p ${TARGET}
@@ -49,7 +50,7 @@ if [ ! -e .patched ]; then
 else
   echo "jemalloc already patched on:" `cat .patched`
 fi
-cd ../../src/llvm
+cd ../llvm
 if [ ! -e .patched ]; then
   patch -p1 < ${TOP}/../patch-llvm
   date > .patched
@@ -59,7 +60,7 @@ fi
 cd ..
 mkdir -p llvm-build
 cd llvm-build
-../llvm/configure --with-gcc-toolchain=/usr/local/ --prefix=${LLVM_TARGET} #--disable-compiler-version-checks
+../llvm/configure --prefix=${LLVM_TARGET} #--disable-compiler-version-checks
 gmake ENABLE_OPTIMIZED=1
 gmake ENABLE_OPTIMIZED=1 install
 
@@ -76,7 +77,7 @@ cp librustllvm.a ${TARGET}
 cd ${TOP}/rust/src/compiler-rt
 cmake -DLLVM_CONFIG_PATH=${LLVM_TARGET}/bin/llvm-config
 gmake
-cp ./lib/openbsd/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
+cp ./lib/openbsd/libclang_rt.${ARCH}.a ${TARGET}/libcompiler-rt.a
 
 
 cd ${TOP}/rust/src
@@ -86,16 +87,16 @@ cd libbacktrace
 gmake
 cp .libs/libbacktrace.a ${TARGET}
 cd ..
-unlink include
+rm -rf include
 
 cd ${TOP}/rust/src/rt
 ${LLVM_TARGET}/bin/llc rust_try.ll
 ${CC} -c -o rust_try.o rust_try.s
-${CC} -c -o record_sp.o arch/x86_64/record_sp.S
+${CC} -c -o record_sp.o arch/${ARCH}/record_sp.S
 ar rcs ${TARGET}/librustrt_native.a rust_try.o record_sp.o
 
 cd ${TOP}/rust/src/rt
-${CC} -c -o context.o arch/x86_64/_context.S
+${CC} -c -o context.o arch/${ARCH}/_context.S
 ar rcs ${TARGET}/libcontext_switch.a context.o
 
 cd ${TOP}/rust/src/rt
@@ -103,16 +104,12 @@ ${CC} -c -o rust_builtin.o rust_builtin.c
 ar rcs ${TARGET}/librust_builtin.a rust_builtin.o 
 
 cd ${TOP}/rust/src/rt
-${CC} -c -o morestack.o arch/x86_64/morestack.S
+${CC} -c -o morestack.o arch/${ARCH}/morestack.S
 ar rcs ${TARGET}/libmorestack.a morestack.o
 
 cd ${TOP}/rust/src/rt
 ${CC} -c -o miniz.o miniz.c
 ar rcs ${TARGET}/libminiz.a miniz.o 
-
-cd ${TOP}/rust/src/rt
-${CC} -c -I../libuv/include -o rust_uv.o rust_uv.c
-ar rcs ${TARGET}/libuv_support.a rust_uv.o 
 
 cd ${TOP}/rust/src/rt/hoedown
 gmake libhoedown.a 
@@ -120,14 +117,13 @@ cp libhoedown.a ${TARGET}
 
 # Copy Openbsd system libraries
 
-mkdir -p ${TARGET}/lib
 mkdir -p ${TARGET}/usr/lib
-cp -r /lib ${TARGET}/lib
 cp -r /usr/lib ${TARGET}/usr/lib
 
 # 
 cd ${TOP}/..
-python ${TOP}/rust/src/etc/mklldeps.py stage1-openbsd/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser jit mcjit interpreter instrumentation" true "${LLVM_TARGET}/bin/llvm-config"
+#python ${TOP}/rust/src/etc/mklldeps.py stage1-openbsd/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser jit mcjit interpreter instrumentation" true "${LLVM_TARGET}/bin/llvm-config"
+python ${TOP}/rust/src/etc/mklldeps.py stage1-openbsd/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser mcjit interpreter instrumentation" true "${LLVM_TARGET}/bin/llvm-config"
 
 cd ${TOP}/..
 tar cvzf stage1-openbsd.tgz stage1-openbsd/${TARGET_SUB} stage1-openbsd/llvmdeps.rs
