@@ -1,0 +1,21 @@
+diff -Naur a/lib/librthread/tcb.h b/lib/librthread/tcb.h
+--- a/lib/librthread/tcb.h	Fri Nov 14 17:19:35 2014
++++ b/lib/librthread/tcb.h	Fri Nov 14 17:19:51 2014
+@@ -74,6 +74,8 @@
+ struct thread_control_block {
+ 	void	*tcb_dtv;		/* internal to the runtime linker */
+ 	struct	pthread *tcb_thread;
++	void	*tcb_segstack;		/* used for segmented stacks */
++					/* e.g. by LLVM to store stack bound */
+ };
+ 
+ #ifndef THREAD_ERRNOPTR_OFFSET
+@@ -102,6 +104,8 @@
+ 	void	*tcb_dtv;		/* internal to the runtime linker */
+ 	struct	pthread *tcb_thread;
+ 	int	*__tcb_errno;
++	void	*tcb_segstack;		/* used for segmented stacks */
++					/* e.g. by LLVM to store stack bound */
+ };
+ 
+ #ifdef TCB_GET_MEMBER
