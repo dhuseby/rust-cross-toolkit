@@ -23,7 +23,7 @@ export CXXFLAGS="-I/usr/local/include/c++/4.9.0/"
 #export AR="/usr/local/bin/egcc-ar"
 #export NM="/usr/local/bin/egcc-nm"
 #export RANLIB="/usr/local/bin/egcc-ranlib"
-LLVM_TARGET=${HOME}
+LLVM_TARGET="/usr/local/"
 
 mkdir -p ${TARGET}
 

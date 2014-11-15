@@ -1,48 +1,98 @@
 diff --git a/lib/Target/X86/X86FrameLowering.cpp b/lib/Target/X86/X86FrameLowering.cpp
-index 8c029a8..766a9e2 100644
+index 96954fc..e53ec87 100644
 --- a/lib/Target/X86/X86FrameLowering.cpp
 +++ b/lib/Target/X86/X86FrameLowering.cpp
-@@ -1328,7 +1328,8 @@ X86FrameLowering::adjustForSegmentedStacks(MachineFunction &MF) const {
+@@ -1365,17 +1365,19 @@ X86FrameLowering::adjustForSegmentedStacks(MachineFunction &MF) const {
+ 
+   unsigned ScratchReg = GetScratchRegister(Is64Bit, IsLP64, MF, true);
+   assert(!MF.getRegInfo().isLiveIn(ScratchReg) &&
+          "Scratch register is live-in");
+ 
    if (MF.getFunction()->isVarArg())
      report_fatal_error("Segmented stacks do not support vararg functions.");
    if (!STI.isTargetLinux() && !STI.isTargetDarwin() &&
 -      !STI.isTargetWin32() && !STI.isTargetWin64() && !STI.isTargetFreeBSD())
-+      !STI.isTargetWin32() && !STI.isTargetWin64() && 
-+      !STI.isTargetFreeBSD() && !STI.isTargetDragonFly())
++      !STI.isTargetWin32() && !STI.isTargetWin64() &&
++      !STI.isTargetFreeBSD() && !STI.isTargetDragonFly() &&
++      !STI.isTargetOpenBSD())
      report_fatal_error("Segmented stacks not supported on this platform.");
  
    // Eventually StackSize will be calculated by a link-time pass; which will
-@@ -1382,6 +1383,9 @@ X86FrameLowering::adjustForSegmentedStacks(MachineFunction &MF) const {
+   // also decide whether checking code needs to be injected into this particular
+   // prologue.
+   StackSize = MFI->getStackSize();
+ 
+   // Do not generate a prologue for functions with a stack of size zero
+@@ -1419,16 +1421,22 @@ X86FrameLowering::adjustForSegmentedStacks(MachineFunction &MF) const {
+       TlsReg = X86::GS;
+       TlsOffset = 0x60 + 90*8; // See pthread_machdep.h. Steal TLS slot 90.
+     } else if (STI.isTargetWin64()) {
+       TlsReg = X86::GS;
+       TlsOffset = 0x28; // pvArbitrary, reserved for application use
      } else if (STI.isTargetFreeBSD()) {
        TlsReg = X86::FS;
        TlsOffset = 0x18;
 +    } else if (STI.isTargetDragonFly()) {
 +      TlsReg = X86::FS;
 +      TlsOffset = 0x20; // use tls_tcb.tcb_segstack
++    } else if (STI.isTargetOpenBSD()) {
++      TlsReg = X86::FS;
++      TlsOffset = 0x20; // use thread_control_block.tcb_segstack
      } else {
        report_fatal_error("Segmented stacks not supported on this platform.");
      }
-@@ -1404,6 +1408,9 @@ X86FrameLowering::adjustForSegmentedStacks(MachineFunction &MF) const {
+ 
+     if (CompareStackPointer)
+       ScratchReg = IsLP64 ? X86::RSP : X86::ESP;
+     else
+       BuildMI(checkMBB, DL, TII.get(IsLP64 ? X86::LEA64r : X86::LEA64_32r), ScratchReg).addReg(X86::RSP)
+@@ -1441,16 +1449,22 @@ X86FrameLowering::adjustForSegmentedStacks(MachineFunction &MF) const {
+       TlsReg = X86::GS;
+       TlsOffset = 0x30;
+     } else if (STI.isTargetDarwin()) {
+       TlsReg = X86::GS;
+       TlsOffset = 0x48 + 90*4;
      } else if (STI.isTargetWin32()) {
        TlsReg = X86::FS;
        TlsOffset = 0x14; // pvArbitrary, reserved for application use
 +    } else if (STI.isTargetDragonFly()) {
 +      TlsReg = X86::FS;
 +      TlsOffset = 0x10; // use tls_tcb.tcb_segstack
++    } else if (STI.isTargetOpenBSD()) {
++      TlsReg = X86::GS;
++      TlsOffset = 0x10; // use thread_control_block.tcb_segstack
      } else if (STI.isTargetFreeBSD()) {
        report_fatal_error("Segmented stacks not supported on FreeBSD i386.");
      } else {
+       report_fatal_error("Segmented stacks not supported on this platform.");
+     }
+ 
+     if (CompareStackPointer)
+       ScratchReg = X86::ESP;
 diff --git a/lib/Target/X86/X86Subtarget.h b/lib/Target/X86/X86Subtarget.h
-index 5f5df5e..300bf16 100644
+index a39cdcc..69fbaf2 100644
 --- a/lib/Target/X86/X86Subtarget.h
 +++ b/lib/Target/X86/X86Subtarget.h
-@@ -371,6 +371,9 @@ public:
+@@ -380,16 +380,22 @@ public:
+   bool isSLM() const { return X86ProcFamily == IntelSLM; }
+ 
+   const Triple &getTargetTriple() const { return TargetTriple; }
+ 
+   bool isTargetDarwin() const { return TargetTriple.isOSDarwin(); }
    bool isTargetFreeBSD() const {
      return TargetTriple.getOS() == Triple::FreeBSD;
    }
 +  bool isTargetDragonFly() const {
 +    return TargetTriple.getOS() == Triple::DragonFly;
 +  }
++  bool isTargetOpenBSD() const {
++    return TargetTriple.getOS() == Triple::OpenBSD;
++  }
    bool isTargetSolaris() const {
      return TargetTriple.getOS() == Triple::Solaris;
    }
+ 
+   bool isTargetELF() const { return TargetTriple.isOSBinFormatELF(); }
+   bool isTargetCOFF() const { return TargetTriple.isOSBinFormatCOFF(); }
+   bool isTargetMacho() const { return TargetTriple.isOSBinFormatMachO(); }
+ 
