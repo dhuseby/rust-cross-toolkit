@@ -19,11 +19,11 @@ ARCH=`machine -a`
 export CC="/usr/local/bin/egcc"
 export CXX="/usr/local/bin/eg++"
 export LDFLAGS="-L/usr/local/lib"
-export CXXFLAGS="-I/usr/local/include/c++/4.9.0/"
+export CXXFLAGS="-I/usr/local/include/c++/4.9.0"
 #export AR="/usr/local/bin/egcc-ar"
 #export NM="/usr/local/bin/egcc-nm"
 #export RANLIB="/usr/local/bin/egcc-ranlib"
-LLVM_TARGET="/usr/local/"
+LLVM_TARGET="/usr/local"
 
 mkdir -p ${TARGET}
 
