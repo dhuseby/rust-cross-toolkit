@@ -11,7 +11,7 @@ cd stage1-openbsd
 TOP=`pwd`
 
 AUTOMAKE_VERSION=1.14
-BINUTILS_VERSION=2.24
+BINUTILS_VERSION=2.23.2
 
 TARGET_SUB=libs
 TARGET=${TOP}/${TARGET_SUB}
@@ -22,7 +22,8 @@ if [ "${ARCH}" -eq "amd64" ]; then
 fi
 
 export AS="/usr/local/bin/egcc-as"
-export LD="/usr/local/bin/egcc-ld"
+#export AS="/usr/local/bin/nasm"
+#export LD="/usr/local/bin/egcc-ld"
 export CC="/usr/local/bin/egcc"
 export CXX="/usr/local/bin/eg++"
 export LDFLAGS="-L/usr/local/lib"
@@ -111,12 +112,15 @@ rm -rf include
 set -x
 cd ${TOP}/rust/src/rt
 ${LLVM_TARGET}/bin/llc rust_try.ll
-${CC} -c -o rust_try.o rust_try.s
-${CC} -c -o record_sp.o arch/${RUSTARCH}/record_sp.S
+#${CC} -c -o rust_try.o rust_try.s
+#${CC} -c -o record_sp.o arch/${RUSTARCH}/record_sp.S
+${AS} -o rust_try.o rust_try.s
+${AS} -o record_sp.o arch/${RUSTARCH}/record_sp.S
 ar rcs ${TARGET}/librustrt_native.a rust_try.o record_sp.o
 
 cd ${TOP}/rust/src/rt
 ${CC} -c -o context.o arch/${RUSTARCH}/_context.S
+#${AS} -o context.o arch/${RUSTARCH}/_context.S
 ar rcs ${TARGET}/libcontext_switch.a context.o
 
 cd ${TOP}/rust/src/rt
@@ -125,6 +129,7 @@ ar rcs ${TARGET}/librust_builtin.a rust_builtin.o
 
 cd ${TOP}/rust/src/rt
 ${CC} -c -o morestack.o arch/${RUSTARCH}/morestack.S
+#${AS} -o morestack.o arch/${RUSTARCH}/morestack.S
 ar rcs ${TARGET}/libmorestack.a morestack.o
 
 cd ${TOP}/rust/src/rt
