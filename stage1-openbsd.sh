@@ -5,6 +5,12 @@ if [ `uname -s` != "OpenBSD" ]; then
   exit 1
 fi
 
+if [ $EUID != "0" ]; then
+  echo "This script must run with elevated privileges"
+  sudo "$0" "$@"
+  exit $?
+fi
+
 mkdir -p stage1-openbsd
 cd stage1-openbsd
 
@@ -42,16 +48,15 @@ echo "-- LLVM_TARGET: ${LLVM_TARGET}"
 echo "-- ARCH:        ${ARCH}"
 echo "-- RUSTARCH:    ${RUSTARCH}"
 
-if [ ! -d binutils-${BINUTILS_VERSION} ]; then
+if [ ! -e binutils-${BINUTILS_VERSION} ]; then
   curl ftp://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.bz2 | tar -jxvf -
 fi
 cd binutils-${BINUTILS_VERSION}
 ./configure --prefix=${LLVM_TARGET} --program-prefix=egcc-
 gmake VERBOSE=1
 gmake VERBOSE=1 install
-cd ${TOP}
 
-if [ ! -d rust ]; then
+if [ ! -e rust ]; then
   git clone https://github.com/rust-lang/rust.git
 fi
 cd rust
