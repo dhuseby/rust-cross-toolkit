@@ -1,4 +1,5 @@
 #!/bin/sh
+set -x
 
 if [ `uname -s` != "Linux" ]; then
   echo "You have to run this on Linux!"
@@ -51,7 +52,9 @@ export CFG_VER_DATE="`date`"
 export CFG_COMPILER_HOST_TRIPLE="i386-unknown-openbsd"
 export CFG_PREFIX="/usr/local"
 
-RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena rustuv debug log fmt_macros serialize term syntax flate time url uuid getopts regex test coretest glob graphviz num rustc_back semver rustc_llvm rbml rustc fourcc hexfloat regex_macros green rustdoc"
+#RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena rustuv debug log fmt_macros serialize term syntax flate time url uuid getopts regex test coretest glob graphviz num rustc_back semver rustc_llvm rbml rustc fourcc hexfloat regex_macros green rustdoc"
+
+RUST_LIBS="liballoc arena backtrace collections core coretest flate fmt_macros getopts graphviz green libc log native rand rbml regex regex_macros rustc rustc_back rustc_llvm rustdoc rustrt serialize std sync syntax term test time unicode"
 
 # compile rust libraries
 for lib in $RUST_LIBS; do
