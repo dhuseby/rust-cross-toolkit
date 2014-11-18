@@ -12,10 +12,11 @@ until this process gets easier (i.e. the OpenBSD rthread patch lands).
 OpenBSD Prerequisites
 ---------------------
 
-To start, you need to download and install an [OpenBSD snapshot][1].  Then you
-need to follow [the instructions][2] on how to check out -current and build it.
-After you have rebooted into -current, the next step is to patch librthreads
-and then rebuild your kernel and userland.
+To start, you need to download and install an 
+[OpenBSD snapshot](ftp://ftp.openbsd.org/pub/OpenBSD/snapshots/).  Then you
+need to follow [the instructions](http://www.openbsd.org/faq/faq5.html#Bld) on 
+how to check out -current and build it. After you have rebooted into -current, 
+the next step is to patch librthreads and then rebuild your kernel and userland.
 
 ```sh
 cd /usr/src
@@ -124,6 +125,3 @@ tar -zxvf stage1-openbsd.tgz
 
 Then kick off the `stage2-linux.sh` script.
 
-
-[1]: ftp://ftp.openbsd.org/pub/OpenBSD/snapshots/i386/
-[2]: http://www.openbsd.org/faq/faq5.html#Bld
