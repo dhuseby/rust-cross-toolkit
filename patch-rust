@@ -170,7 +170,7 @@ index 88cd674..c360b36 100644
  
          target_triple: target_triple,
 diff --git a/src/libstd/dynamic_lib.rs b/src/libstd/dynamic_lib.rs
-index e3dfa8c..916a0b5 100644
+index 8bb82d5..2584d8c 100644
 --- a/src/libstd/dynamic_lib.rs
 +++ b/src/libstd/dynamic_lib.rs
 @@ -186,16 +186,17 @@ mod test {
@@ -203,17 +203,17 @@ index e3dfa8c..916a0b5 100644
 +          target_os = "openbsd",
            target_os = "dragonfly"))]
  pub mod dl {
+     pub use self::Rtld::*;
  
      use c_str::{CString, ToCStr};
      use libc;
      use ptr;
      use result::*;
-     use string::String;
 diff --git a/src/libstd/os.rs b/src/libstd/os.rs
-index ea42117..502a6b1 100644
+index f5aa225..1690206 100644
 --- a/src/libstd/os.rs
 +++ b/src/libstd/os.rs
-@@ -628,17 +628,17 @@ pub fn dll_filename(base: &str) -> String {
+@@ -631,17 +631,17 @@ pub fn dll_filename(base: &str) -> String {
  ///
  /// match os::self_exe_name() {
  ///     Some(exe_path) => println!("Path of this executable is: {}", exe_path.display()),
@@ -232,7 +232,7 @@ index ea42117..502a6b1 100644
                                 KERN_PROC as c_int,
                                 KERN_PROC_PATHNAME as c_int,
                                 -1 as c_int];
-@@ -1006,16 +1006,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+@@ -1010,16 +1010,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
      }
  
      res
@@ -250,7 +250,7 @@ index ea42117..502a6b1 100644
          Some(args) => args,
          None => panic!("process arguments not initialized")
      }
-@@ -1618,16 +1619,47 @@ pub mod consts {
+@@ -1622,16 +1623,47 @@ pub mod consts {
      /// platform: in this case, the empty string.
      pub const EXE_SUFFIX: &'static str = "";
  
@@ -299,10 +299,10 @@ index ea42117..502a6b1 100644
      /// A string describing the specific operating system in use: in this
      /// case, `dragonfly`.
 diff --git a/src/libstd/rt/backtrace.rs b/src/libstd/rt/backtrace.rs
-index b08b92b..882c861 100644
+index 0f888bd..5888d18 100644
 --- a/src/libstd/rt/backtrace.rs
 +++ b/src/libstd/rt/backtrace.rs
-@@ -466,17 +466,18 @@ mod imp {
+@@ -465,17 +465,18 @@ mod imp {
          //
          // FIXME: We also call self_exe_name() on DragonFly BSD. I haven't
          //        tested if this is required or not.
@@ -349,10 +349,10 @@ index 35a8713..126a1ba 100644
  extern {}
  
 diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
-index 7c44142..b8ac8d6 100644
+index 9b2b594..de72de2 100644
 --- a/src/libstd/sys/common/net.rs
 +++ b/src/libstd/sys/common/net.rs
-@@ -637,24 +637,25 @@ impl TcpStream {
+@@ -641,24 +641,25 @@ impl TcpStream {
          }
      }
  
@@ -527,10 +527,10 @@ index 4e495f0..c6e5450 100644
          }
          unsafe {
 diff --git a/src/libstd/sys/unix/process.rs b/src/libstd/sys/unix/process.rs
-index 0965d98..2538f0b 100644
+index 81bc138..9a97019 100644
 --- a/src/libstd/sys/unix/process.rs
 +++ b/src/libstd/sys/unix/process.rs
-@@ -567,16 +567,17 @@ fn translate_status(status: c_int) -> ProcessExit {
+@@ -568,16 +568,17 @@ fn translate_status(status: c_int) -> ProcessExit {
          pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
          pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
          pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
@@ -549,13 +549,13 @@ index 0965d98..2538f0b 100644
  
      if imp::WIFEXITED(status) {
 diff --git a/src/libsyntax/abi.rs b/src/libsyntax/abi.rs
-index 912755d..1d5b18f 100644
+index 87693f3..62a2414 100644
 --- a/src/libsyntax/abi.rs
 +++ b/src/libsyntax/abi.rs
-@@ -7,17 +7,17 @@
- // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
- // option. This file may not be copied, modified, or distributed
- // except according to those terms.
+@@ -12,17 +12,17 @@ pub use self::Os::*;
+ pub use self::Abi::*;
+ pub use self::Architecture::*;
+ pub use self::AbiArchitecture::*;
  
  use std::fmt;
  
@@ -571,7 +571,7 @@ index 912755d..1d5b18f 100644
  
      // Single platform ABIs come first (`for_arch()` relies on this)
      Cdecl,
-@@ -115,16 +115,17 @@ impl fmt::Show for Os {
+@@ -120,16 +120,17 @@ impl fmt::Show for Os {
      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
          match *self {
              OsLinux => "linux".fmt(f),
