@@ -13,7 +13,7 @@ OpenBSD Prerequisites
 ---------------------
 
 To start, you need to download and install an 
-[OpenBSD snapshot](ftp://ftp.openbsd.org/pub/OpenBSD/snapshots/).  Then you
+[OpenBSD snapshot](http://ftp.openbsd.org/pub/OpenBSD/snapshots/).  Then you
 need to follow [the instructions](http://www.openbsd.org/faq/faq5.html#Bld) on 
 how to check out -current and build it. After you have rebooted into -current, 
 the next step is to patch librthreads and then rebuild your kernel and userland.
