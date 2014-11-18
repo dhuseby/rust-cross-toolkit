@@ -21,28 +21,51 @@ if [ ! -e "stage1-openbsd/libs" ]; then
   exit 1
 fi
 
+mkdir -p stage2-linux
+mkdir -p stage2-linux/rust-libs
+cd stage2-linux
+
 TOP=`pwd`
 
-RUST_PREFIX=${TOP}/stage1-linux/install
-RUST_SRC=${TOP}/stage2-linux/rust
+RUST_PREFIX=${TOP}/../stage1-linux/install
+RUST_SRC=${TOP}/rust
 RUSTC=${RUST_PREFIX}/bin/rustc
 TARGET=i386-unknown-openbsd
 
-DF_LIB_DIR=${TOP}/stage1-openbsd/libs
-RS_LIB_DIR=${TOP}/stage2-linux/rust-libs
+DF_LIB_DIR=${TOP}/../stage1-openbsd/libs
+RS_LIB_DIR=${TOP}/rust-libs
 
 export LD_LIBRARY_PATH=${RUST_PREFIX}/lib
 
-mkdir -p ${TOP}/stage2-linux
-mkdir -p ${TOP}/stage2-linux/rust-libs
-
-if [ ! -e ${TOP}/stage2-linux/rust ]; then
-  cd stage2-linux
-  git clone --reference ${TOP}/stage1-linux/rust https://github.com/rust-lang/rust.git
-  cd ${TOP}
+if [ ! -e rust ]; then
+  git clone --reference ${TOP}/../stage1-linux/rust https://github.com/rust-lang/rust.git
 fi
+cd rust
+git submodule init
+git submodule update
+if [ ! -e .patched ]; then
+  patch -p1 < ${TOP}/../patch-rust
+  date > .patched
+else
+  echo "Rust already patched on:" `cat .patched`
+fi
+cd src/jemalloc
+if [ ! -e .patched ]; then
+  patch -p1 < ${TOP}/../patch-jemalloc
+  date > .patched
+else
+  echo "jemalloc already patched on:" `cat .patched`
+fi
+cd ../llvm
+if [ ! -e .patched ]; then
+  patch -p1 < ${TOP}/../patch-llvm
+  date > .patched
+else
+  echo "LLVM already patched on:" `cat .patched`
+fi
+cd ../..
 
-cp ${TOP}/stage1-openbsd/llvmdeps.rs ${TOP}/stage2-linux/rust/src/librustc_llvm/
+cp ${TOP}/../stage1-openbsd/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
 
 # XXX
 export CFG_VERSION="0.13.0-dev"
@@ -52,9 +75,7 @@ export CFG_VER_DATE="`date`"
 export CFG_COMPILER_HOST_TRIPLE="i386-unknown-openbsd"
 export CFG_PREFIX="/usr/local"
 
-#RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena rustuv debug log fmt_macros serialize term syntax flate time url uuid getopts regex test coretest glob graphviz num rustc_back semver rustc_llvm rbml rustc fourcc hexfloat regex_macros green rustdoc"
-
-RUST_LIBS="liballoc arena backtrace collections core coretest flate fmt_macros getopts graphviz green libc log native rand rbml regex regex_macros rustc rustc_back rustc_llvm rustdoc rustrt serialize std sync syntax term test time unicode"
+RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena log fmt_macros serialize term syntax flate time getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc regex_macros green rustdoc"
 
 # compile rust libraries
 for lib in $RUST_LIBS; do
@@ -66,6 +87,6 @@ for lib in $RUST_LIBS; do
   fi
 done
 
-${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/stage2-linux/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
+${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
 
-tar cvzf ${TOP}/stage2-linux.tgz stage2-linux/*.o stage2-linux/rust-libs
+tar cvzf ${TOP}/../stage2-linux.tgz ${TOP}/*.o ${TOP}/rust-libs

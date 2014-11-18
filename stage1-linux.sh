@@ -5,12 +5,18 @@ if [ `uname -s` != "Linux" ]; then
   exit 1
 fi
 
+if [ $EUID != "0" ]; then
+  echo "This script must run with elevated privileges"
+  sudo "$0" "$@"
+  exit $?
+fi
+
 mkdir -p stage1-linux
 cd stage1-linux
 
 TOP=`pwd`
 
-if [ ! -d rust ]; then
+if [ ! -e rust ]; then
   git clone https://github.com/rust-lang/rust.git
 fi
 cd rust
