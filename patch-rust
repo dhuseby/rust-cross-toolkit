@@ -370,9 +370,9 @@ index 1a86ef2..538c9ae 100644
 +                    pub st_ctime_nsec: c_long,
 +                    pub st_size: off_t,
 +                    pub st_blocks: blkcnt_t,
-+                    pub st_blksize: c_uint;
-+                    pub st_flags: c_uint;
-+                    pub st_gen: c_uint;
++                    pub st_blksize: c_uint,
++                    pub st_flags: c_uint,
++                    pub st_gen: c_uint,
 +                }
 +
 +                #[repr(C)]
@@ -433,9 +433,7 @@ index 1a86ef2..538c9ae 100644
 +                pub type ssize_t = i64;
 +            }
 +            pub mod posix01 {
-+                use types::common::c95::{c_void};
-+                use types::common::c99::{uint8_t, uint32_t, int32_t};
-+                use types::os::arch::c95::{c_long, time_t};
++                use types::os::arch::c95::{c_short, c_uint, c_long, time_t};
 +                use types::os::arch::posix88::{dev_t, gid_t, ino_t};
 +                use types::os::arch::posix88::{mode_t, off_t};
 +                use types::os::arch::posix88::{uid_t};
@@ -461,9 +459,9 @@ index 1a86ef2..538c9ae 100644
 +                    pub st_ctime_nsec: c_long,
 +                    pub st_size: off_t,
 +                    pub st_blocks: blkcnt_t,
-+                    pub st_blksize: c_uint;
-+                    pub st_flags: c_uint;
-+                    pub st_gen: c_uint;
++                    pub st_blksize: c_uint,
++                    pub st_flags: c_uint,
++                    pub st_gen: c_uint,
 +                }
 +
 +                #[repr(C)]
