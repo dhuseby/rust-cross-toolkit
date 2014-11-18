@@ -5,12 +5,6 @@ if [ `uname -s` != "OpenBSD" ]; then
   exit 1
 fi
 
-if [ $EUID != "0" ]; then
-  echo "This script must run with elevated privileges"
-  sudo "$0" "$@"
-  exit $?
-fi
-
 mkdir -p stage1-openbsd
 cd stage1-openbsd
 

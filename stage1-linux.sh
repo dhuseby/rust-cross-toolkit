@@ -5,12 +5,6 @@ if [ `uname -s` != "Linux" ]; then
   exit 1
 fi
 
-if [ $EUID != "0" ]; then
-  echo "This script must run with elevated privileges"
-  sudo "$0" "$@"
-  exit $?
-fi
-
 mkdir -p stage1-linux
 cd stage1-linux
 
@@ -22,6 +16,8 @@ fi
 cd rust
 git submodule init
 git submodule update
+./configure --prefix=${TOP}/install
+
 if [ ! -e .patched ]; then
   patch -p1 < ${TOP}/../patch-rust
   date > .patched
@@ -36,7 +32,6 @@ else
   echo "jemalloc already patched on:" `cat .patched`
 fi
 cd ../..
-./configure --prefix=${TOP}/install
 cd src/llvm
 if [ ! -e .patched ]; then
   patch -p1 < ${TOP}/../patch-llvm
