@@ -683,6 +683,7 @@ index 1a86ef2..c9b5d36 100644
      pub mod extra {
      }
  
+
 diff --git a/src/libnative/io/process.rs b/src/libnative/io/process.rs
 index 30c916f..dc6e3b5 100644
 --- a/src/libnative/io/process.rs
@@ -1294,10 +1295,10 @@ index 8bb82d5..2584d8c 100644
      use ptr;
      use result::*;
 diff --git a/src/libstd/os.rs b/src/libstd/os.rs
-index f5aa225..1690206 100644
+index b898b9a..d9c7fa9 100644
 --- a/src/libstd/os.rs
 +++ b/src/libstd/os.rs
-@@ -631,17 +631,17 @@ pub fn dll_filename(base: &str) -> String {
+@@ -651,17 +651,17 @@ pub fn dll_filename(base: &str) -> String {
  ///
  /// match os::self_exe_name() {
  ///     Some(exe_path) => println!("Path of this executable is: {}", exe_path.display()),
@@ -1316,7 +1317,7 @@ index f5aa225..1690206 100644
                                 KERN_PROC as c_int,
                                 KERN_PROC_PATHNAME as c_int,
                                 -1 as c_int];
-@@ -1010,16 +1010,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+@@ -1032,16 +1032,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
      }
  
      res
@@ -1334,7 +1335,7 @@ index f5aa225..1690206 100644
          Some(args) => args,
          None => panic!("process arguments not initialized")
      }
-@@ -1622,16 +1623,47 @@ pub mod consts {
+@@ -1644,16 +1645,47 @@ pub mod consts {
      /// platform: in this case, the empty string.
      pub const EXE_SUFFIX: &'static str = "";
  
@@ -1381,8 +1382,7 @@ index f5aa225..1690206 100644
      pub const FAMILY: &'static str = "unix";
  
      /// A string describing the specific operating system in use: in this
-     /// case, `dragonfly`.
-diff --git a/src/libstd/rt/backtrace.rs b/src/libstd/rt/backtrace.rs
+     /// case, `dragonfly`.diff --git a/src/libstd/rt/backtrace.rs b/src/libstd/rt/backtrace.rs
 index 0f888bd..5888d18 100644
 --- a/src/libstd/rt/backtrace.rs
 +++ b/src/libstd/rt/backtrace.rs
