@@ -1292,29 +1292,32 @@ index 8bb82d5..2584d8c 100644
      use ptr;
      use result::*;
 diff --git a/src/libstd/os.rs b/src/libstd/os.rs
-index b898b9a..d9c7fa9 100644
+index b898b9a..2fc0425 100644
 --- a/src/libstd/os.rs
 +++ b/src/libstd/os.rs
-@@ -651,17 +651,17 @@ pub fn dll_filename(base: &str) -> String {
- ///
- /// match os::self_exe_name() {
- ///     Some(exe_path) => println!("Path of this executable is: {}", exe_path.display()),
- ///     None => println!("Unable to get the path of this executable!")
- /// };
- /// ```
- pub fn self_exe_name() -> Option<Path> {
+@@ -677,16 +677,21 @@ pub fn self_exe_name() -> Option<Path> {
+                              ptr::null_mut(), 0u as libc::size_t);
+             if err != 0 { return None; }
+             if sz == 0 { return None; }
+             v.set_len(sz as uint - 1); // chop off trailing NUL
+             Some(v)
+         }
+     }
  
--    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
++    #[cfg(target_os = "openbsd")]
++    fn load_self() -> Option<Vec<u8>> {
++      None
++    }
++
+     #[cfg(any(target_os = "linux", target_os = "android"))]
      fn load_self() -> Option<Vec<u8>> {
-         unsafe {
-             use libc::funcs::bsd44::*;
-             use libc::consts::os::extra::*;
-             let mut mib = vec![CTL_KERN as c_int,
-                                KERN_PROC as c_int,
-                                KERN_PROC_PATHNAME as c_int,
-                                -1 as c_int];
-@@ -1032,16 +1032,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+         use std::io;
+ 
+         match io::fs::readlink(&Path::new("/proc/self/exe")) {
+             Ok(path) => Some(path.into_vec()),
+             Err(..) => None
+         }
+@@ -1032,16 +1037,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
      }
  
      res
@@ -1332,7 +1335,7 @@ index b898b9a..d9c7fa9 100644
          Some(args) => args,
          None => panic!("process arguments not initialized")
      }
-@@ -1644,16 +1645,47 @@ pub mod consts {
+@@ -1644,16 +1650,47 @@ pub mod consts {
      /// platform: in this case, the empty string.
      pub const EXE_SUFFIX: &'static str = "";
  
@@ -1379,8 +1382,7 @@ index b898b9a..d9c7fa9 100644
      pub const FAMILY: &'static str = "unix";
  
      /// A string describing the specific operating system in use: in this
-     /// case, `dragonfly`.diff --git a/src/libstd/rt/backtrace.rs b/src/libstd/rt/backtrace.rs
-index 0f888bd..5888d18 100644
+     /// case, `dragonfly`.index 0f888bd..5888d18 100644
 --- a/src/libstd/rt/backtrace.rs
 +++ b/src/libstd/rt/backtrace.rs
 @@ -465,17 +465,18 @@ mod imp {
