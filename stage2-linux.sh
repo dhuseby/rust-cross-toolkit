@@ -30,7 +30,7 @@ TOP=`pwd`
 RUST_PREFIX=${TOP}/../stage1-linux/install
 RUST_SRC=${TOP}/rust
 RUSTC=${RUST_PREFIX}/bin/rustc
-TARGET=i386-unknown-openbsd
+TARGET=x86_64-unknown-openbsd
 
 DF_LIB_DIR=${TOP}/../stage1-openbsd/libs
 RS_LIB_DIR=${TOP}/rust-libs
@@ -75,7 +75,7 @@ export CFG_VER_DATE="`date`"
 export CFG_COMPILER_HOST_TRIPLE="i386-unknown-openbsd"
 export CFG_PREFIX="/usr/local"
 
-RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena log fmt_macros serialize term syntax flate time getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc regex_macros green rustdoc"
+RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena regex log fmt_macros serialize term syntax flate time getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc regex_macros green rustc_trans rustdoc"
 
 # compile rust libraries
 for lib in $RUST_LIBS; do
