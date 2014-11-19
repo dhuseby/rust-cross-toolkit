@@ -143,10 +143,15 @@ index 5d8c174..36a12ad 100644
      /// `dummy_stack` if you want a zero-sized stack.
      pub fn new(size: uint) -> Stack {
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index 1a86ef2..538c9ae 100644
+index 1a86ef2..5e319f5 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
-@@ -284,7 +284,8 @@ pub use funcs::bsd43::{shutdown};
+@@ -279,30 +279,31 @@ pub use funcs::bsd43::{shutdown};
+ #[cfg(windows)] pub use funcs::extra::kernel32::{DisconnectNamedPipe, OpenProcess};
+ #[cfg(windows)] pub use funcs::extra::kernel32::{MoveFileExW, VirtualProtect};
+ #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
+ #[cfg(windows)] pub use funcs::extra::winsock::{ioctlsocket};
+ 
  #[cfg(any(target_os = "linux",
            target_os = "android",
            target_os = "freebsd",
@@ -156,7 +161,12 @@ index 1a86ef2..538c9ae 100644
  pub use consts::os::posix01::{CLOCK_REALTIME, CLOCK_MONOTONIC};
  
  #[cfg(any(target_os = "linux", target_os = "android"))]
-@@ -297,7 +298,7 @@ pub use consts::os::extra::{AF_PACKET};
+ pub use funcs::posix01::unistd::{fdatasync};
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub use types::os::arch::extra::{sockaddr_ll};
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub use consts::os::extra::{AF_PACKET};
+ 
  #[cfg(all(unix, not(target_os = "freebsd")))]
  pub use consts::os::extra::{MAP_STACK};
  
@@ -165,7 +175,17 @@ index 1a86ef2..538c9ae 100644
  pub use consts::os::bsd44::{TCP_KEEPIDLE};
  
  #[cfg(any(target_os = "macos", target_os = "ios"))]
-@@ -1265,6 +1266,320 @@ pub mod types {
+ pub use consts::os::bsd44::{TCP_KEEPALIVE};
+ #[cfg(any(target_os = "macos", target_os = "ios"))]
+ pub use consts::os::extra::{F_FULLFSYNC};
+ 
+ #[cfg(any(target_os = "macos", target_os = "ios"))]
+@@ -1260,16 +1261,325 @@ pub mod types {
+             }
+             pub mod bsd44 {
+             }
+             pub mod extra {
+             }
          }
      }
  
@@ -297,8 +317,6 @@ index 1a86ef2..538c9ae 100644
 +                    pub ifa_dstaddr: *mut sockaddr,
 +                    pub ifa_data: *mut c_void
 +                }
-+
-+
 +            }
 +        }
 +
@@ -389,7 +407,6 @@ index 1a86ef2..538c9ae 100644
 +            }
 +            pub mod extra {
 +            }
-+
 +        }
 +
 +        #[cfg(target_arch = "x86_64")]
@@ -484,7 +501,17 @@ index 1a86ef2..538c9ae 100644
      #[cfg(target_os = "windows")]
      pub mod os {
          pub mod common {
-@@ -3170,7 +3485,7 @@ pub mod consts {
+             pub mod posix01 {
+                 use types::os::arch::c95::{c_short, time_t, c_long};
+                 use types::os::arch::extra::{int64, time64_t};
+                 use types::os::arch::posix88::{dev_t, ino_t};
+ 
+@@ -3165,17 +3475,17 @@ pub mod consts {
+             pub const _SC_VERSION : c_int = 25;
+             pub const _SC_RE_DUP_MAX : c_int = 26;
+             pub const _SC_STREAM_MAX : c_int = 27;
+             pub const _SC_TZNAME_MAX : c_int = 28;
+             pub const _SC_PAGESIZE : c_int = 39;
          }
      }
  
@@ -493,7 +520,17 @@ index 1a86ef2..538c9ae 100644
      pub mod os {
          pub mod c95 {
              use types::os::arch::c95::{c_int, c_uint};
-@@ -3440,6 +3755,9 @@ pub mod consts {
+ 
+             pub const EXIT_FAILURE : c_int = 1;
+             pub const EXIT_SUCCESS : c_int = 0;
+             pub const RAND_MAX : c_int = 2147483647;
+             pub const EOF : c_int = -1;
+@@ -3435,16 +3745,19 @@ pub mod consts {
+                           target_arch = "mipsel",
+                           target_arch = "x86",
+                           target_arch = "x86_64")))]
+             pub const PTHREAD_STACK_MIN: size_t = 2048;
+ 
              #[cfg(target_os = "dragonfly")]
              pub const PTHREAD_STACK_MIN: size_t = 1024;
  
@@ -503,7 +540,17 @@ index 1a86ef2..538c9ae 100644
              pub const CLOCK_REALTIME: c_int = 0;
              pub const CLOCK_MONOTONIC: c_int = 4;
          }
-@@ -4275,7 +4593,8 @@ pub mod funcs {
+         pub mod posix08 {
+         }
+         pub mod bsd44 {
+             use types::os::arch::c95::c_int;
+ 
+@@ -4270,44 +4583,47 @@ pub mod funcs {
+         }
+     }
+ 
+     #[cfg(any(target_os = "linux",
+               target_os = "android",
                target_os = "macos",
                target_os = "ios",
                target_os = "freebsd",
@@ -513,7 +560,13 @@ index 1a86ef2..538c9ae 100644
      pub mod posix88 {
          pub mod stat_ {
              use types::os::arch::c95::{c_char, c_int};
-@@ -4289,6 +4608,7 @@ pub mod funcs {
+             use types::os::arch::posix01::stat;
+             use types::os::arch::posix88::mode_t;
+ 
+             extern {
+                 pub fn chmod(path: *const c_char, mode: mode_t) -> c_int;
+                 pub fn fchmod(fd: c_int, mode: mode_t) -> c_int;
+ 
                  #[cfg(any(target_os = "linux",
                            target_os = "freebsd",
                            target_os = "dragonfly",
@@ -521,7 +574,14 @@ index 1a86ef2..538c9ae 100644
                            target_os = "android",
                            target_os = "ios"))]
                  pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
-@@ -4303,6 +4623,7 @@ pub mod funcs {
+ 
+                 #[cfg(target_os = "macos")]
+                 #[link_name = "fstat64"]
+                 pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+ 
+                 pub fn mkdir(path: *const c_char, mode: mode_t) -> c_int;
+                 pub fn mkfifo(path: *const c_char, mode: mode_t) -> c_int;
+ 
                  #[cfg(any(target_os = "linux",
                            target_os = "freebsd",
                            target_os = "dragonfly",
@@ -529,7 +589,17 @@ index 1a86ef2..538c9ae 100644
                            target_os = "android",
                            target_os = "ios"))]
                  pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
-@@ -4494,7 +4815,8 @@ pub mod funcs {
+ 
+                 #[cfg(target_os = "macos")]
+                 #[link_name = "stat64"]
+                 pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
+             }
+@@ -4489,26 +4805,28 @@ pub mod funcs {
+ 
+     }
+ 
+     #[cfg(any(target_os = "linux",
+               target_os = "android",
                target_os = "macos",
                target_os = "ios",
                target_os = "freebsd",
@@ -539,7 +609,9 @@ index 1a86ef2..538c9ae 100644
      pub mod posix01 {
          pub mod stat_ {
              use types::os::arch::c95::{c_char, c_int};
-@@ -4504,6 +4826,7 @@ pub mod funcs {
+             use types::os::arch::posix01::stat;
+ 
+             extern {
                  #[cfg(any(target_os = "linux",
                            target_os = "freebsd",
                            target_os = "dragonfly",
@@ -547,7 +619,17 @@ index 1a86ef2..538c9ae 100644
                            target_os = "android",
                            target_os = "ios"))]
                  pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
-@@ -4611,7 +4934,8 @@ pub mod funcs {
+ 
+                 #[cfg(target_os = "macos")]
+                 #[link_name = "lstat64"]
+                 pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
+             }
+@@ -4606,17 +4924,18 @@ pub mod funcs {
+ 
+ 
+     #[cfg(any(target_os = "windows",
+               target_os = "linux",
+               target_os = "android",
                target_os = "macos",
                target_os = "ios",
                target_os = "freebsd",
@@ -557,7 +639,17 @@ index 1a86ef2..538c9ae 100644
      pub mod posix08 {
          pub mod unistd {
          }
-@@ -4697,7 +5021,8 @@ pub mod funcs {
+     }
+ 
+     #[cfg(not(windows))]
+     pub mod bsd43 {
+         use types::common::c95::{c_void};
+@@ -4692,17 +5011,18 @@ pub mod funcs {
+                           addrlen: c_int) -> c_int;
+             pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
+         }
+     }
+ 
      #[cfg(any(target_os = "macos",
                target_os = "ios",
                target_os = "freebsd",
@@ -567,7 +659,17 @@ index 1a86ef2..538c9ae 100644
      pub mod bsd44 {
          use types::common::c95::{c_void};
          use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, c_ulong, size_t};
-@@ -4760,7 +5085,7 @@ pub mod funcs {
+ 
+         extern {
+             pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
+             pub fn sysctl(name: *mut c_int,
+                           namelen: c_uint,
+@@ -4755,17 +5075,17 @@ pub mod funcs {
+         use types::os::arch::c95::{c_char, c_int};
+ 
+         extern {
+             pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32)
+                                         -> c_int;
          }
      }
  
@@ -575,6 +677,11 @@ index 1a86ef2..538c9ae 100644
 +    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
      pub mod extra {
      }
+ 
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     pub mod extra {
+     }
+ 
  
 diff --git a/src/libnative/io/process.rs b/src/libnative/io/process.rs
 index 30c916f..dc6e3b5 100644
