@@ -46,9 +46,10 @@ if [ ! -e binutils-${BINUTILS_VERSION} ]; then
   curl ftp://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.bz2 | tar -jxvf -
 fi
 cd binutils-${BINUTILS_VERSION}
-./configure --prefix=${LLVM_TARGET} --program-prefix=egcc-
+./configure --enable-ld=no --prefix=${LLVM_TARGET} --program-prefix=egcc-
 gmake VERBOSE=1
 gmake VERBOSE=1 install
+cd ${TOP}
 
 if [ ! -e rust ]; then
   git clone https://github.com/rust-lang/rust.git
