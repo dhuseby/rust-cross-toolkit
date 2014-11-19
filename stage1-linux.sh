@@ -16,7 +16,6 @@ fi
 cd rust
 git submodule init
 git submodule update
-./configure --prefix=${TOP}/install
 
 if [ ! -e .patched ]; then
   patch -p1 < ${TOP}/../patch-rust
@@ -24,6 +23,9 @@ if [ ! -e .patched ]; then
 else
   echo "Rust already patched on:" `cat .patched`
 fi
+
+./configure --prefix=${TOP}/install
+
 cd src/jemalloc
 if [ ! -e .patched ]; then
   patch -p1 < ${TOP}/../patch-jemalloc
@@ -31,8 +33,7 @@ if [ ! -e .patched ]; then
 else
   echo "jemalloc already patched on:" `cat .patched`
 fi
-cd ../..
-cd src/llvm
+cd ../llvm
 if [ ! -e .patched ]; then
   patch -p1 < ${TOP}/../patch-llvm
   date > .patched
@@ -40,6 +41,7 @@ else
   echo "LLVM already patched on:" `cat .patched`
 fi
 cd ../..
+
 
 echo $PWD
 make
