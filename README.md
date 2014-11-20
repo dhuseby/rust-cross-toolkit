@@ -4,7 +4,7 @@ rust-cross-openbsd
 Cross-compiling Rust to OpenBSD (currently only i386/amd64).
 
 Getting Rust to work on OpenBSD is currently a work in progress and is not easy
-to do.  Currently, it requires that you track OpenBSD -current and to patch and
+to do.  It requires that you track OpenBSD -current and to patch and
 build your own OpenBSD kernel and userland.  If you don't know what that is,
 this is either a great opportunity for you to learn, or maybe you should wait
 until this process gets easier (i.e. the OpenBSD rthread patch lands).
@@ -158,7 +158,7 @@ Now kick off Stage 3 on OpenBSD:
 ```
 
 *NOTE:* So far I have been unable to get this step to complete.  I have included
-build log from my last try.  It is called `stage3-openbsd-build.log`.  If you
+the build log from my last try.  It is called `stage3-openbsd-build.log`.  If you
 open it, you'll see that it fails to link.  I'm pretty sure this means that Rust
 is impossible to cross-compile this way because OpenBSD's `ld` is an old GNU
 linker that doesn't understand all of the features needed to link `rustc`.  It
@@ -169,14 +169,14 @@ what can be done?  Here are some ideas I might try:
 1. Try using the same version of compiler, assembler, and linker on Linux as I
    am on OpenBSD.  The idea is that the `.o` and `.rlib` files created during
    Stages 1 and 2 on Linux will not have anything in them that the old linker 
-   on OpenBSD won't understand.  I think this is the likely the easiest solution.
+   on OpenBSD won't understand.  I think this is likely the easiest solution.
 2. Instead of trying to build an OpenBSD executable, just build a Linux executable
    that knows how to cross-compile to OpenBSD.  With Linux emulation on OpenBSD
-   this will, in theory, allow for the development of programs in Rust that can
-   be cross-compiled to OpenBSD.  This won't get us a full toolchain but will
-   allow Rust to be used on OpenBSD until something else gives.
-3. The hardest solution of course is to figure out how to get a newer binutils
-   linker working on OpenBSD.
+   this will, in theory, allow the self-hosting `rustc` compiler to be built
+   directly on OpenBSD.
+3. The hardest solution of course is to figure out how to get the old OpenBSD
+   linker to understand the newer features in the `.o` files so that it can
+   successfully link the `rustc`.
 
 So, I'm stumped at the moment.  I would appreciate any help trying to figure
 this out.  I think I've documented my process sufficiently here that it is easy
