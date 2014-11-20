@@ -27,6 +27,9 @@ cd stage2-linux
 
 TOP=`pwd`
 
+export CC="/usr/bin/gcc-4.8"
+export CXX="/usr/bin/g++-4.8"
+
 RUST_PREFIX=${TOP}/../stage1-linux/install
 RUST_SRC=${TOP}/rust
 RUSTC=${RUST_PREFIX}/bin/rustc
@@ -72,7 +75,7 @@ export CFG_VERSION="0.13.0-dev"
 export CFG_RELEASE="openbsd-cross"
 export CFG_VER_HASH="hash"
 export CFG_VER_DATE="`date`"
-export CFG_COMPILER_HOST_TRIPLE="i386-unknown-openbsd"
+export CFG_COMPILER_HOST_TRIPLE="x86_64-unknown-openbsd"
 export CFG_PREFIX="/usr/local"
 
 RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena regex log fmt_macros serialize term syntax flate time getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc regex_macros green rustc_trans rustdoc"
@@ -90,3 +93,6 @@ done
 ${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
 
 tar cvzf ${TOP}/../stage2-linux.tgz ${TOP}/*.o ${TOP}/rust-libs
+
+
+echo "Please copy stage2-linux.tgz onto your OpenBSD machine and extract it"

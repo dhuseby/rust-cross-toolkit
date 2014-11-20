@@ -10,6 +10,9 @@ cd stage1-linux
 
 TOP=`pwd`
 
+export CC="/usr/bin/gcc-4.8"
+export CXX="/usr/bin/g++-4.8"
+
 if [ ! -e rust ]; then
   git clone https://github.com/rust-lang/rust.git
 fi
