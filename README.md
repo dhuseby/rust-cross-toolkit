@@ -55,6 +55,14 @@ env SUBPACKAGE="-c++" make install
 This is necessary to make sure that both the C and C++ compilers are built and
 installed.  Now you're ready to clone this repo and build stage 1.
 
+After installing Python, make sure you add the symlinks to make it your default:
+
+```sh
+ln -sf /usr/local/bin/python-2.7 /usr/local/bin/python
+ln -sf /usr/local/bin/python-2.7-2to3 /usr/local/bin/2to3
+ln -sf /usr/local/bin/python-2.7-config /usr/local/bin/python-config
+```
+
 Stage 1 OpenBSD
 ---------------
 
@@ -89,6 +97,8 @@ assembly files found in the Rust tree.
 
 When the script is done, there will be a stage1-openbsd.tgz file that you need
 to copy to your Linux box and unpack it in the root folder of this repo there.
+I have included a build log of this called `stage1-openbsd-build.log` if you want
+to compare output.
 
 Stage 1 Linux
 -------------
@@ -108,20 +118,66 @@ Now kick off the `stage1-linux.sh` script:
 ```
 
 When that is done, everything should be ready to go to move to the second stage.
-
-*NOTE*: This is as far as I've been able to get so far.  I'm debugging Stage 2
-on Linux right now.
+I have included a build log of this called `stage1-linux-build.log` if you want
+to compare output.
 
 Stage 2 Linux
 -------------
 
-Stage 2 on Linux requires the output of Stage 1 on OpenBSD.  You should have copied
-the `stage1-openbsd.tgz` file to the root folder of the clone of this repo on your
-Linux machine.  Unpack it now:
+Stage 2 on Linux requires the output of Stage 1 on OpenBSD and Stage 1 on Linux.  
+You should have copied the `stage1-openbsd.tgz` file to the root folder of the 
+clone of this repo on your Linux machine.  Unpack it now:
 
 ```sh
 tar -zxvf stage1-openbsd.tgz
 ```
 
-Then kick off the `stage2-linux.sh` script.
+Then kick off the `stage2-linux.sh` script.  The second stage takes the parts
+from Stage 1 on both machines and uses it to build the rust libraries and all
+of the `.o` files needed to link a `rustc` executable on OpenBSD.
 
+When the script is done, it will have created a tarball named `stage2-linux.tgz`.
+Copy this tarball over to your OpenBSD machine and then continue on to Stage 3.
+I have included a build log file called `stage2-linux-build.log` if you want to
+compare output.
+
+Stage 3 OpenBSD
+---------------
+
+Before you start Stage 3 you must unpack the `stage2-linux.tgz` tarball from
+earlier:
+
+```sh
+tar -zxvf stage2-linux.tgz
+```
+
+Now kick off Stage 3 on OpenBSD:
+
+```sh
+./stage3-openbsd.sh
+```
+
+*NOTE:* So far I have been unable to get this step to complete.  I have included
+build log from my last try.  It is called `stage3-openbsd-build.log`.  If you
+open it, you'll see that it fails to link.  I'm pretty sure this means that Rust
+is impossible to cross-compile this way because OpenBSD's `ld` is an old GNU
+linker that doesn't understand all of the features needed to link `rustc`.  It
+is not possible to compile a newer linker from binutils because the binutils
+linker no longer supports the OpenBSD platform due to licensing problems.  So
+what can be done?  Here are some ideas I might try:
+
+1. Try using the same version of compiler, assembler, and linker on Linux as I
+   am on OpenBSD.  The idea is that the `.o` and `.rlib` files created during
+   Stages 1 and 2 on Linux will not have anything in them that the old linker 
+   on OpenBSD won't understand.  I think this is the likely the easiest solution.
+2. Instead of trying to build an OpenBSD executable, just build a Linux executable
+   that knows how to cross-compile to OpenBSD.  With Linux emulation on OpenBSD
+   this will, in theory, allow for the development of programs in Rust that can
+   be cross-compiled to OpenBSD.  This won't get us a full toolchain but will
+   allow Rust to be used on OpenBSD until something else gives.
+3. The hardest solution of course is to figure out how to get a newer binutils
+   linker working on OpenBSD.
+
+So, I'm stumped at the moment.  I would appreciate any help trying to figure
+this out.  I think I've documented my process sufficiently here that it is easy
+to recreate elsewhere.
