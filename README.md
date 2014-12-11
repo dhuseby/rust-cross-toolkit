@@ -36,6 +36,12 @@ install the toolchain during installation you need to do that now.
 $ pkg_add bitrig-syscomp
 ```
 
+Also install python, cmake and GNU make:
+
+```sh
+$ pkg_add cmake python gmake
+```
+
 Stage 1 Bitrig
 ---------------
 
