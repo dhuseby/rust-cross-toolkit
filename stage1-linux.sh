@@ -11,6 +11,12 @@ cd stage1-linux
 
 TOP=`pwd`
 
+export CC="/usr/bin/clang"
+export CXX="/usr/bin/clang++"
+export CFLAGS="`llvm-config --cflags`"
+export CXXFLAGS="-std=c++11 -stdlib=libc++ -stdlibabi=libc++abi `llvm-config --cxxflags`"
+export LDFLAGS="`llvm-config --ldflags`"
+
 if [ ! -e rust ]; then
   git clone https://github.com/dhuseby/rust.git
 fi
