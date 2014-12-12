@@ -16,8 +16,8 @@ if [ ! -e "stage1-linux/install" ]; then
   exit 1
 fi
 
-if [ ! -e "stage1-openbsd/libs" ]; then
-  echo "need stage1-openbsd/libs!"
+if [ ! -e "stage1-bitrig/libs" ]; then
+  echo "need stage1-bitrig/libs!"
   exit 1
 fi
 
@@ -27,58 +27,41 @@ cd stage2-linux
 
 TOP=`pwd`
 
-export CC="/usr/bin/gcc-4.8"
-export CXX="/usr/bin/g++-4.8"
-
 RUST_PREFIX=${TOP}/../stage1-linux/install
 RUST_SRC=${TOP}/rust
 RUSTC=${RUST_PREFIX}/bin/rustc
-TARGET=x86_64-unknown-openbsd
+TARGET=x86_64-unknown-bitrig
 
-DF_LIB_DIR=${TOP}/../stage1-openbsd/libs
+DF_LIB_DIR=${TOP}/../stage1-bitrig/libs
 RS_LIB_DIR=${TOP}/rust-libs
 
 export LD_LIBRARY_PATH=${RUST_PREFIX}/lib
 
 if [ ! -e rust ]; then
-  git clone --reference ${TOP}/../stage1-linux/rust https://github.com/rust-lang/rust.git
-fi
-cd rust
-git submodule init
-git submodule update
-if [ ! -e .patched ]; then
-  patch -p1 < ${TOP}/../patch-rust
-  date > .patched
+  # clone everything
+  git clone --reference ${TOP}/../stage1-linux/rust https://github.com/dhuseby/rust.git
+  cd rust
+  git submodule init
+  git submodule update
 else
-  echo "Rust already patched on:" `cat .patched`
+  # update everything
+  cd rust
+  git pull origin
+  git submodule update --merge
 fi
-cd src/jemalloc
-if [ ! -e .patched ]; then
-  patch -p1 < ${TOP}/../patch-jemalloc
-  date > .patched
-else
-  echo "jemalloc already patched on:" `cat .patched`
-fi
-cd ../llvm
-if [ ! -e .patched ]; then
-  patch -p1 < ${TOP}/../patch-llvm
-  date > .patched
-else
-  echo "LLVM already patched on:" `cat .patched`
-fi
-cd ../..
 
-cp ${TOP}/../stage1-openbsd/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
+cp ${TOP}/../stage1-bitrig/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
 
 # XXX
 export CFG_VERSION="0.13.0-dev"
-export CFG_RELEASE="openbsd-cross"
+export CFG_RELEASE="bitrig-cross"
 export CFG_VER_HASH="hash"
 export CFG_VER_DATE="`date`"
-export CFG_COMPILER_HOST_TRIPLE="x86_64-unknown-openbsd"
+export CFG_COMPILER_HOST_TRIPLE="x86_64-unknown-bitrig"
 export CFG_PREFIX="/usr/local"
+export CFG_LLVM_LINKAGE_FILE="${TOP}/rust/src/librustc_llvm/llvmdeps.rs"
 
-RUST_LIBS="core libc alloc unicode collections rustrt rand sync std native arena regex log fmt_macros serialize term syntax flate time getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc regex_macros green rustc_trans rustdoc"
+RUST_LIBS="core libc alloc unicode collections rustrt rand std arena regex log fmt_macros serialize term syntax flate time getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc regex_macros green rustc_trans rustc_typeck rustc_driver rustdoc "
 
 # compile rust libraries
 for lib in $RUST_LIBS; do
@@ -95,4 +78,4 @@ ${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_L
 tar cvzf ${TOP}/../stage2-linux.tgz ${TOP}/*.o ${TOP}/rust-libs
 
 
-echo "Please copy stage2-linux.tgz onto your OpenBSD machine and extract it"
+echo "Please copy stage2-linux.tgz onto your Bitrig machine and extract it"

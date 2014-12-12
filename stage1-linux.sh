@@ -1,4 +1,5 @@
 #!/bin/sh
+set -x
 
 if [ `uname -s` != "Linux" ]; then
   echo "You have to run this on Linux!"
@@ -10,42 +11,12 @@ cd stage1-linux
 
 TOP=`pwd`
 
-export CC="/usr/bin/gcc-4.8"
-export CXX="/usr/bin/g++-4.8"
-
 if [ ! -e rust ]; then
-  git clone https://github.com/rust-lang/rust.git
+  git clone https://github.com/dhuseby/rust.git
 fi
 cd rust
 git submodule init
 git submodule update
-
-if [ ! -e .patched ]; then
-  patch -p1 < ${TOP}/../patch-rust
-  date > .patched
-else
-  echo "Rust already patched on:" `cat .patched`
-fi
-
-./configure --prefix=${TOP}/install
-
-cd src/jemalloc
-if [ ! -e .patched ]; then
-  patch -p1 < ${TOP}/../patch-jemalloc
-  date > .patched
-else
-  echo "jemalloc already patched on:" `cat .patched`
-fi
-cd ../llvm
-if [ ! -e .patched ]; then
-  patch -p1 < ${TOP}/../patch-llvm
-  date > .patched
-else
-  echo "LLVM already patched on:" `cat .patched`
-fi
-cd ../..
-
-
-echo $PWD
-make
+./configure --disable-docs --enable-clang --prefix=${TOP}/install
+make VERBOSE=1
 make install
