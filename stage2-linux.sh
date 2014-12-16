@@ -48,11 +48,16 @@ else
   cd rust
   git pull origin
   git submodule update --merge
+  rm -rf ${RS_LIB_DIR}/*
 fi
 
 cp ${TOP}/../stage1-bitrig/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
 
-# XXX
+export CC="/usr/bin/clang"
+export CXX="/usr/bin/clang++"
+export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O2 -fomit-frame-pointer -fPIC"
+export CXXFLAGS="-std=c++11 -stdlib=libc++ -mstackrealign -g -I/usr/include/c++/v1/ -I/usr/include/libcxxabi -I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O2 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual -v"
+export LDFLAGS="-stdlib=libc++ -L/usr/lib/llvm-3.4/lib -L/usr/lib/x86_64-linux-gnu/ -L/lib64 -L/lib -L/usr/lib -lc++ -lc++abi -lunwind -lc -lpthread -lffi -ltinfo -ldl -lm"
 export CFG_VERSION="0.13.0-dev"
 export CFG_RELEASE="bitrig-cross"
 export CFG_VER_HASH="hash"
@@ -69,11 +74,11 @@ for lib in $RUST_LIBS; do
     echo "skipping $lib"
   else
     echo "compiling $lib"
-    ${RUSTC} --target ${TARGET} ${RUST_FLAGS} --crate-type lib -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
+    ${RUSTC} --target ${TARGET} ${RUST_FLAGS} --crate-type lib -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib -Z verbose
   fi
 done
 
-${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
+${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs -Z verbose
 
 tar cvzf ${TOP}/../stage2-linux.tgz ${TOP}/*.o ${TOP}/rust-libs
 
