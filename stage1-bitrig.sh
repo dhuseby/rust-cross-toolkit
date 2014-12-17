@@ -22,8 +22,8 @@ fi
 
 export CC="/usr/bin/clang"
 export CXX="/usr/bin/clang++"
-export CFLAGS="-O3 -pipe -fvisibility=hidden"
-export CXXFLAGS="-O3 -fvisibility=hidden -fvisibility-inlines-hidden"
+export CFLAGS="-g -O0 -pipe -fvisibility=hidden"
+export CXXFLAGS="-g -O0 -fvisibility=hidden -fvisibility-inlines-hidden"
 export LDFLAGS="-v -L/usr/local/lib"
 LLVM_TARGET="/usr/local"
 
