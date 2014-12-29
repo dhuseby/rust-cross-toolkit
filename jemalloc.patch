@@ -1,8 +1,8 @@
 diff --git a/configure b/configure
-index b584c44..e55815a 100755
+index b584c44..9d36ddc 100755
 --- a/configure
 +++ b/configure
-@@ -4876,16 +4876,21 @@ case "${host}" in
+@@ -4876,16 +4876,22 @@ case "${host}" in
  	force_lazy_lock="1"
  	;;
    *-*-dragonfly*)
@@ -11,10 +11,11 @@ index b584c44..e55815a 100755
  	$as_echo "#define JEMALLOC_PURGE_MADVISE_FREE  " >>confdefs.h
  
  	;;
-+  *-*-openbsd*)
++  *-*-bitrig*)
 +	CFLAGS="$CFLAGS"
 +	abi="elf"
 +	$as_echo "#define JEMALLOC_PURGE_MADVISE_FREE  " >>confdefs.h
++
 +	;;
    *-*-linux*)
  	CFLAGS="$CFLAGS"
@@ -25,7 +26,7 @@ index b584c44..e55815a 100755
  	$as_echo "#define JEMALLOC_PURGE_MADVISE_DONTNEED  " >>confdefs.h
  
 diff --git a/configure.ac b/configure.ac
-index e4afe88..302f359 100644
+index e4afe88..07c7e4f 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -283,16 +283,21 @@ case "${host}" in
@@ -37,7 +38,7 @@ index e4afe88..302f359 100644
  	abi="elf"
  	AC_DEFINE([JEMALLOC_PURGE_MADVISE_FREE], [ ])
  	;;
-+  *-*-openbsd*)
++  *-*-bitrig*)
 +	CFLAGS="$CFLAGS"
 +	abi="elf"
 +	AC_DEFINE([JEMALLOC_PURGE_MADVISE_FREE], [ ])

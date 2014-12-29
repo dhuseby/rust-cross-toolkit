@@ -1,8 +1,8 @@
 diff --git a/configure b/configure
-index 7790025..fa3f9ac 100755
+index f14009b..e468727 100755
 --- a/configure
 +++ b/configure
-@@ -368,16 +368,19 @@ case $CFG_OSTYPE in
+@@ -368,16 +368,20 @@ case $CFG_OSTYPE in
      FreeBSD)
          CFG_OSTYPE=unknown-freebsd
          ;;
@@ -11,9 +11,10 @@ index 7790025..fa3f9ac 100755
          CFG_OSTYPE=unknown-dragonfly
          ;;
  
-+    OpenBSD)
-+        CFG_OSTYPE=unknown-openbsd
++    Bitrig)
++        CFG_OSTYPE=unknown-bitrig
 +        ;;
++
      Darwin)
          CFG_OSTYPE=apple-darwin
          ;;
@@ -22,32 +23,64 @@ index 7790025..fa3f9ac 100755
          # msys' `uname` does not print gcc configuration, but prints msys
          # configuration. so we cannot believe `uname -m`:
          # msys1 is always i686 and msys2 is always x86_64.
-@@ -703,20 +706,20 @@ then
-     putvar CFG_LOCAL_RUST_ROOT
- else
-     if [ ! -z "$CFG_LOCAL_RUST_ROOT" ]
-     then
-        warn "Use of --local-rust-root without --enable-local-rust"
-     fi
- fi
+@@ -718,16 +722,23 @@ fi
  
--# Force freebsd to build with clang; gcc doesn't like us there
--if [ $CFG_OSTYPE = unknown-freebsd ]
-+# Force freebsd/openbsd to build with clang; gcc doesn't like us there
-+if [ $CFG_OSTYPE = unknown-freebsd -o $CFG_OSTYPE = unknown-openbsd ]
+ # Force freebsd to build with clang; gcc doesn't like us there
+ if [ $CFG_OSTYPE = unknown-freebsd ]
  then
--    step_msg "on FreeBSD, forcing use of clang"
-+    step_msg "on FreeBSD/OpenBSD, forcing use of clang"
+     step_msg "on FreeBSD, forcing use of clang"
      CFG_ENABLE_CLANG=1
  fi
  
++# Force bitrig to build with clang; gcc doesn't like us there
++if [ $CFG_OSTYPE = unknown-bitrig ]
++then
++    step_msg "on Bitrig, forcing use of clang"
++    CFG_ENABLE_CLANG=1
++fi
++
  if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
  then
      err "either clang or gcc is required"
  fi
  
+ # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
+ # system, so if we find that gcc is clang, we should just use clang directly.
+ if [ $CFG_OSTYPE = apple-darwin -a -z "$CFG_ENABLE_CLANG" ]
+diff --git a/mk/cfg/x86_64-unknown-bitrig.mk b/mk/cfg/x86_64-unknown-bitrig.mk
+new file mode 100644
+index 0000000..bb6c9ae
+--- /dev/null
++++ b/mk/cfg/x86_64-unknown-bitrig.mk
+@@ -0,0 +1,26 @@
++# x86_64-unknown-bitrig-elf configuration
++CC_x86_64-unknown-bitrig=$(CC)
++CXX_x86_64-unknown-bitrig=$(CXX)
++CPP_x86_64-unknown-bitrig=$(CPP)
++AR_x86_64-unknown-bitrig=$(AR)
++CFG_LIB_NAME_x86_64-unknown-bitrig=lib$(1).so
++CFG_STATIC_LIB_NAME_x86_64-unknown-bitrig=lib$(1).a
++CFG_LIB_GLOB_x86_64-unknown-bitrig=lib$(1)-*.so
++CFG_LIB_DSYM_GLOB_x86_64-unknown-bitrig=$(1)-*.dylib.dSYM
++CFG_JEMALLOC_CFLAGS_x86_64-unknown-bitrig := -I/usr/include -I/usr/local/include $(CFLAGS)
++CFG_GCCISH_CFLAGS_x86_64-unknown-bitrig := -Wall -Werror -g -fPIC -I/usr/include -I/usr/local/include $(CFLAGS)
++CFG_GCCISH_LINK_FLAGS_x86_64-unknown-bitrig := -shared -fPIC -g -pthread
++CFG_GCCISH_DEF_FLAG_x86_64-unknown-bitrig := -Wl,--export-dynamic,--dynamic-list=
++CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-whole-archive
++CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-no-whole-archive
++CFG_DEF_SUFFIX_x86_64-unknown-bitrig := .bsd.def
++CFG_LLC_FLAGS_x86_64-unknown-bitrig :=
++CFG_INSTALL_NAME_x86_64-unknown-bitrig =
++CFG_EXE_SUFFIX_x86_64-unknown-bitrig :=
++CFG_WINDOWSY_x86_64-unknown-bitrig :=
++CFG_UNIXY_x86_64-unknown-bitrig := 1
++CFG_PATH_MUNGE_x86_64-unknown-bitrig :=
++CFG_LDPATH_x86_64-unknown-bitrig :=
++CFG_RUN_x86_64-unknown-bitrig=$(2)
++CFG_RUN_TARG_x86_64-unknown-bitrig=$(call CFG_RUN_x86_64-unknown-bitrig,,$(2))
++CFG_GNU_TRIPLE_x86_64-unknown-bitrig := x86_64-unknown-bitrig
 diff --git a/src/compiletest/util.rs b/src/compiletest/util.rs
-index a116cc3..934d94f 100644
+index a116cc3..f4050f7 100644
 --- a/src/compiletest/util.rs
 +++ b/src/compiletest/util.rs
 @@ -18,16 +18,17 @@ static OS_TABLE: &'static [(&'static str, &'static str)] = &[
@@ -59,7 +92,7 @@ index a116cc3..934d94f 100644
      ("linux", "linux"),
      ("freebsd", "freebsd"),
      ("dragonfly", "dragonfly"),
-+    ("openbsd", "openbsd"),
++    ("bitrig", "bitrig"),
  ];
  
  pub fn get_os(triple: &str) -> &'static str {
@@ -69,10 +102,10 @@ index a116cc3..934d94f 100644
          }
      }
 diff --git a/src/doc/reference.md b/src/doc/reference.md
-index f31f28d..15cb159 100644
+index b71994c..0a0e4a2 100644
 --- a/src/doc/reference.md
 +++ b/src/doc/reference.md
-@@ -2067,17 +2067,18 @@ The following configurations must be defined by the implementation:
+@@ -2143,17 +2143,18 @@ The following configurations must be defined by the implementation:
  * `target_arch = "..."`. Target CPU architecture, such as `"x86"`, `"x86_64"`
    `"mips"`, or `"arm"`.
  * `target_endian = "..."`. Endianness of the target CPU, either `"little"` or
@@ -82,8 +115,8 @@ index f31f28d..15cb159 100644
    as a configuration itself, like `unix` or `windows`.
  * `target_os = "..."`. Operating system of the target, examples include
 -  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"` or `"dragonfly"`.
-+  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"`, `"openbsd"`, or 
-+  `"dragonfly"`.
++  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"`, or
++  `"bitrig"`.
  * `target_word_size = "..."`. Target word size in bits. This is set to `"32"`
    for targets with 32-bit pointers, and likewise set to `"64"` for 64-bit
    pointers.
@@ -92,61 +125,80 @@ index f31f28d..15cb159 100644
  
  ### Lint check attributes
  
-diff --git a/src/etc/mklldeps.py b/src/etc/mklldeps.py
-index 0003de1..2fe04e7 100644
---- a/src/etc/mklldeps.py
-+++ b/src/etc/mklldeps.py
-@@ -53,16 +53,18 @@ for llconfig in sys.argv[4:]:
-     if 'darwin' in os:
-         os = 'macos'
-     elif 'linux' in os:
-         os = 'linux'
-     elif 'freebsd' in os:
-         os = 'freebsd'
-     elif 'dragonfly' in os:
-         os = 'dragonfly'
-+    elif 'openbsd' in os:
-+        os = 'openbsd'
-     elif 'android' in os:
-         os = 'android'
-     elif 'win' in os or 'mingw' in os:
-         os = 'windows'
-     cfg = [
-         "target_arch = \"" + arch + "\"",
-         "target_os = \"" + os + "\"",
-     ]
-diff --git a/src/libgreen/stack.rs b/src/libgreen/stack.rs
-index 5d8c174..36a12ad 100644
---- a/src/libgreen/stack.rs
-+++ b/src/libgreen/stack.rs
-@@ -23,20 +23,20 @@ pub struct Stack {
+diff --git a/src/etc/local_stage0.sh b/src/etc/local_stage0.sh
+index 56ebd4f..6eac786 100755
+--- a/src/etc/local_stage0.sh
++++ b/src/etc/local_stage0.sh
+@@ -13,17 +13,17 @@ TARG_DIR=$1
+ PREFIX=$2
+ RUSTLIBDIR=$3
  
- // Try to use MAP_STACK on platforms that support it (it's what we're doing
- // anyway), but some platforms don't support it at all. For example, it appears
- // that there's a bug in freebsd that MAP_STACK implies MAP_FIXED (so it always
- // panics): http://lists.freebsd.org/pipermail/freebsd-bugs/2011-July/044840.html
- //
- // DragonFly BSD also seems to suffer from the same problem. When MAP_STACK is
- // used, it returns the same `ptr` multiple times.
--#[cfg(not(any(windows, target_os = "freebsd", target_os = "dragonfly")))]
-+#[cfg(not(any(windows, target_os = "freebsd", target_os = "openbsd", target_os = "dragonfly")))]
- static STACK_FLAGS: libc::c_int = libc::MAP_STACK | libc::MAP_PRIVATE |
-                                   libc::MAP_ANON;
--#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+#[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "dragonfly"))]
- static STACK_FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANON;
- #[cfg(windows)]
- static STACK_FLAGS: libc::c_int = 0;
+ LIB_DIR=lib
+ LIB_PREFIX=lib
  
- impl Stack {
-     /// Allocate a new stack of `size`. If size = 0, this will panic. Use
-     /// `dummy_stack` if you want a zero-sized stack.
-     pub fn new(size: uint) -> Stack {
+ OS=`uname -s`
+ case $OS in
+-    ("Linux"|"FreeBSD"|"DragonFly")
++    ("Linux"|"FreeBSD"|"DragonFly"|"Bitrig")
+     BIN_SUF=
+     LIB_SUF=.so
+     break
+     ;;
+     ("Darwin")
+     BIN_SUF=
+     LIB_SUF=.dylib
+     break
+diff --git a/src/libbacktrace/configure b/src/libbacktrace/configure
+index f4f9d05..1d495bb 100755
+--- a/src/libbacktrace/configure
++++ b/src/libbacktrace/configure
+@@ -5645,17 +5645,17 @@ else
+     ;;
+ 
+   amigaos*)
+     # On AmigaOS with pdksh, this test takes hours, literally.
+     # So we just punt and use a minimum line length of 8192.
+     lt_cv_sys_max_cmd_len=8192;
+     ;;
+ 
+-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
++  netbsd* | freebsd* | openbsd* | darwin* | dragonfly* | bitrig*)
+     # This has been around since 386BSD, at least.  Likely further.
+     if test -x /sbin/sysctl; then
+       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
+     elif test -x /usr/sbin/sysctl; then
+       lt_cv_sys_max_cmd_len=`/usr/sbin/sysctl -n kern.argmax`
+     else
+       lt_cv_sys_max_cmd_len=65536	# usable default for all BSDs
+     fi
+diff --git a/src/libbacktrace/ltmain.sh b/src/libbacktrace/ltmain.sh
+index 9503ec8..eaef55a 100644
+--- a/src/libbacktrace/ltmain.sh
++++ b/src/libbacktrace/ltmain.sh
+@@ -4736,17 +4736,17 @@ func_mode_link ()
+ 	  *-*-cygwin* | *-*-mingw* | *-*-pw32* | *-*-beos* | *-cegcc* | *-*-haiku*)
+ 	    # These systems don't actually have a C or math library (as such)
+ 	    continue
+ 	    ;;
+ 	  *-*-os2*)
+ 	    # These systems don't actually have a C library (as such)
+ 	    test "X$arg" = "X-lc" && continue
+ 	    ;;
+-	  *-*-openbsd* | *-*-freebsd* | *-*-dragonfly*)
++	  *-*-openbsd* | *-*-freebsd* | *-*-dragonfly* | *-*-bitrig*)
+ 	    # Do not include libc due to us having libc/libc_r.
+ 	    test "X$arg" = "X-lc" && continue
+ 	    ;;
+ 	  *-*-rhapsody* | *-*-darwin1.[012])
+ 	    # Rhapsody C and math libraries are in the System framework
+ 	    deplibs="$deplibs System.ltframework"
+ 	    continue
+ 	    ;;
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index 1a86ef2..017ee09 100644
+index 7dcdc08..40debb0 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
-@@ -279,30 +279,31 @@ pub use funcs::bsd43::{shutdown};
+@@ -277,30 +277,31 @@ pub use funcs::bsd43::{shutdown};
  #[cfg(windows)] pub use funcs::extra::kernel32::{DisconnectNamedPipe, OpenProcess};
  #[cfg(windows)] pub use funcs::extra::kernel32::{MoveFileExW, VirtualProtect};
  #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
@@ -157,7 +209,7 @@ index 1a86ef2..017ee09 100644
            target_os = "freebsd",
 -          target_os = "dragonfly"))]
 +          target_os = "dragonfly",
-+          target_os = "openbsd"))]
++          target_os = "bitrig"))]
  pub use consts::os::posix01::{CLOCK_REALTIME, CLOCK_MONOTONIC};
  
  #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -171,7 +223,7 @@ index 1a86ef2..017ee09 100644
  pub use consts::os::extra::{MAP_STACK};
  
 -#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+#[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
++#[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig"))]
  pub use consts::os::bsd44::{TCP_KEEPIDLE};
  
  #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -180,7 +232,7 @@ index 1a86ef2..017ee09 100644
  pub use consts::os::extra::{F_FULLFSYNC};
  
  #[cfg(any(target_os = "macos", target_os = "ios"))]
-@@ -1260,16 +1261,324 @@ pub mod types {
+@@ -1273,16 +1274,232 @@ pub mod types {
              }
              pub mod bsd44 {
              }
@@ -189,7 +241,7 @@ index 1a86ef2..017ee09 100644
          }
      }
  
-+    #[cfg(target_os = "openbsd")]
++    #[cfg(target_os = "bitrig")]
 +    pub mod os {
 +        pub mod common {
 +            pub mod posix01 {
@@ -201,35 +253,34 @@ index 1a86ef2..017ee09 100644
 +                pub type pthread_t = uintptr_t;
 +
 +                #[repr(C)]
-+                pub struct glob_t {
-+                    pub gl_pathc:  size_t,
-+                    pub __unused1: size_t,
-+                    pub gl_offs:   size_t,
-+                    pub __unused2: c_int,
++                #[deriving(Copy)] pub struct glob_t {
++                    pub gl_pathc:  c_int,
++                    pub gl_matchc: c_int,
++                    pub gl_offs:   c_int,
++                    pub gl_flags:  c_int,
 +                    pub gl_pathv:  *mut *mut c_char,
-+
++                    pub __unused1: *mut c_void,
++                    pub __unused2: *mut c_void,
 +                    pub __unused3: *mut c_void,
-+
 +                    pub __unused4: *mut c_void,
 +                    pub __unused5: *mut c_void,
 +                    pub __unused6: *mut c_void,
 +                    pub __unused7: *mut c_void,
-+                    pub __unused8: *mut c_void,
 +                }
 +
 +                #[repr(C)]
-+                pub struct timeval {
++                #[deriving(Copy)] pub struct timeval {
 +                    pub tv_sec: time_t,
 +                    pub tv_usec: suseconds_t,
 +                }
 +
 +                #[repr(C)]
-+                pub struct timespec {
++                #[deriving(Copy)] pub struct timespec {
 +                    pub tv_sec: time_t,
 +                    pub tv_nsec: c_long,
 +                }
 +
-+                pub enum timezone {}
++                #[deriving(Copy)] pub enum timezone {}
 +
 +                pub type sighandler_t = size_t;
 +            }
@@ -242,13 +293,13 @@ index 1a86ef2..017ee09 100644
 +                pub type in_port_t = u16;
 +                pub type in_addr_t = u32;
 +                #[repr(C)]
-+                pub struct sockaddr {
++                #[deriving(Copy)] pub struct sockaddr {
 +                    pub sa_len: u8,
 +                    pub sa_family: sa_family_t,
 +                    pub sa_data: [u8, ..14],
 +                }
 +                #[repr(C)]
-+                pub struct sockaddr_storage {
++                #[deriving(Copy)] pub struct sockaddr_storage {
 +                    pub ss_len: u8,
 +                    pub ss_family: sa_family_t,
 +                    pub __ss_pad1: [u8, ..6],
@@ -256,7 +307,7 @@ index 1a86ef2..017ee09 100644
 +                    pub __ss_pad2: [u8, ..112],
 +                }
 +                #[repr(C)]
-+                pub struct sockaddr_in {
++                #[deriving(Copy)] pub struct sockaddr_in {
 +                    pub sin_len: u8,
 +                    pub sin_family: sa_family_t,
 +                    pub sin_port: in_port_t,
@@ -264,11 +315,11 @@ index 1a86ef2..017ee09 100644
 +                    pub sin_zero: [u8, ..8],
 +                }
 +                #[repr(C)]
-+                pub struct in_addr {
++                #[deriving(Copy)] pub struct in_addr {
 +                    pub s_addr: in_addr_t,
 +                }
 +                #[repr(C)]
-+                pub struct sockaddr_in6 {
++                #[deriving(Copy)] pub struct sockaddr_in6 {
 +                    pub sin6_len: u8,
 +                    pub sin6_family: sa_family_t,
 +                    pub sin6_port: in_port_t,
@@ -277,21 +328,21 @@ index 1a86ef2..017ee09 100644
 +                    pub sin6_scope_id: u32,
 +                }
 +                #[repr(C)]
-+                pub struct in6_addr {
++                #[deriving(Copy)] pub struct in6_addr {
 +                    pub s6_addr: [u16, ..8]
 +                }
 +                #[repr(C)]
-+                pub struct ip_mreq {
++                #[deriving(Copy)] pub struct ip_mreq {
 +                    pub imr_multiaddr: in_addr,
 +                    pub imr_interface: in_addr,
 +                }
 +                #[repr(C)]
-+                pub struct ip6_mreq {
++                #[deriving(Copy)] pub struct ip6_mreq {
 +                    pub ipv6mr_multiaddr: in6_addr,
 +                    pub ipv6mr_interface: c_uint,
 +                }
 +                #[repr(C)]
-+                pub struct addrinfo {
++                #[deriving(Copy)] pub struct addrinfo {
 +                    pub ai_flags: c_int,
 +                    pub ai_family: c_int,
 +                    pub ai_socktype: c_int,
@@ -302,13 +353,13 @@ index 1a86ef2..017ee09 100644
 +                    pub ai_next: *mut addrinfo,
 +                }
 +                #[repr(C)]
-+                pub struct sockaddr_un {
++                #[deriving(Copy)] pub struct sockaddr_un {
 +                    pub sun_len: u8,
 +                    pub sun_family: sa_family_t,
 +                    pub sun_path: [c_char, ..104]
 +                }
 +                #[repr(C)]
-+                pub struct ifaddrs {
++                #[deriving(Copy)] pub struct ifaddrs {
 +                    pub ifa_next: *mut ifaddrs,
 +                    pub ifa_name: *mut c_char,
 +                    pub ifa_flags: c_uint,
@@ -317,94 +368,6 @@ index 1a86ef2..017ee09 100644
 +                    pub ifa_dstaddr: *mut sockaddr,
 +                    pub ifa_data: *mut c_void
 +                }
-+            }
-+        }
-+
-+        #[cfg(target_arch = "x86")]
-+        pub mod arch {
-+            pub mod c95 {
-+                pub type c_char = i8;
-+                pub type c_schar = i8;
-+                pub type c_uchar = u8;
-+                pub type c_short = i16;
-+                pub type c_ushort = u16;
-+                pub type c_int = i32;
-+                pub type c_uint = u32;
-+                pub type c_long = i32;
-+                pub type c_ulong = u32;
-+                pub type c_float = f32;
-+                pub type c_double = f64;
-+                pub type size_t = u32;
-+                pub type ptrdiff_t = i32;
-+                pub type clock_t = i32;
-+                pub type time_t = i32;
-+                pub type suseconds_t = i32;
-+                pub type wchar_t = i32;
-+            }
-+            pub mod c99 {
-+                pub type c_longlong = i64;
-+                pub type c_ulonglong = u64;
-+                pub type intptr_t = i32;
-+                pub type uintptr_t = u32;
-+                pub type intmax_t = i64;
-+                pub type uintmax_t = u64;
-+            }
-+            pub mod posix88 {
-+                pub type off_t = i64;
-+                pub type dev_t = i32;
-+                pub type ino_t = u64;
-+                pub type pid_t = i32;
-+                pub type uid_t = u32;
-+                pub type gid_t = u32;
-+                pub type useconds_t = u32;
-+                pub type mode_t = u32;
-+                pub type ssize_t = i32;
-+            }
-+            pub mod posix01 {
-+                use types::common::c95::{c_void};
-+                use types::os::arch::c95::{c_uint, c_long, time_t};
-+                use types::os::arch::posix88::{dev_t, gid_t, ino_t};
-+                use types::os::arch::posix88::{mode_t, off_t};
-+                use types::os::arch::posix88::{uid_t};
-+
-+                pub type nlink_t = u32;
-+                pub type blkcnt_t = i64;
-+
-+                #[repr(C)]
-+                pub struct stat {
-+                    pub st_mode: mode_t,
-+                    pub st_dev: dev_t,
-+                    pub st_ino: ino_t,
-+                    pub st_nlink: nlink_t,
-+                    pub st_uid: uid_t,
-+                    pub st_gid: gid_t,
-+                    pub st_rdev: dev_t,
-+                    pub st_atime: time_t,
-+                    pub st_atime_nsec: c_long,
-+                    pub st_mtime: time_t,
-+                    pub st_mtime_nsec: c_long,
-+                    pub st_ctime: time_t,
-+                    pub st_ctime_nsec: c_long,
-+                    pub st_size: off_t,
-+                    pub st_blocks: blkcnt_t,
-+                    pub st_blksize: c_uint,
-+                    pub st_flags: c_uint,
-+                    pub st_gen: c_uint,
-+                }
-+
-+                #[repr(C)]
-+                pub struct utimbuf {
-+                    pub actime: time_t,
-+                    pub modtime: time_t,
-+                }
-+
-+                pub type pthread_attr_t = *mut c_void;
-+            }
-+            pub mod posix08 {
-+            }
-+            pub mod bsd44 {
-+            }
-+            pub mod extra {
 +            }
 +        }
 +
@@ -438,28 +401,28 @@ index 1a86ef2..017ee09 100644
 +                pub type uintmax_t = u64;
 +            }
 +            pub mod posix88 {
++                use types::os::arch::c95::{c_long};
 +                pub type off_t = i64;
-+                pub type dev_t = u32;
-+                pub type ino_t = u32;
++                pub type dev_t = i32;
++                pub type ino_t = u64;
 +                pub type pid_t = i32;
 +                pub type uid_t = u32;
 +                pub type gid_t = u32;
 +                pub type useconds_t = u32;
-+                pub type mode_t = u16;
-+                pub type ssize_t = i64;
++                pub type mode_t = u32;
++                pub type ssize_t = c_long;
 +            }
 +            pub mod posix01 {
 +                use types::common::c95::{c_void};
-+                use types::os::arch::c95::{c_uint, c_long, time_t};
-+                use types::os::arch::posix88::{dev_t, gid_t, ino_t};
-+                use types::os::arch::posix88::{mode_t, off_t};
-+                use types::os::arch::posix88::{uid_t};
++                use types::os::arch::c95::{time_t};
++                use types::common::c99::{uint32_t, int64_t};
++                use types::os::arch::posix88::{dev_t, gid_t, ino_t, mode_t, off_t, uid_t};
++                use types::os::common::posix01::{timespec};
 +
-+                pub type nlink_t = u16;
-+                pub type blkcnt_t = i64;
++                pub type nlink_t = uint32_t;
 +
 +                #[repr(C)]
-+                pub struct stat {
++                #[deriving(Copy)] pub struct stat {
 +                    pub st_mode: mode_t,
 +                    pub st_dev: dev_t,
 +                    pub st_ino: ino_t,
@@ -467,21 +430,18 @@ index 1a86ef2..017ee09 100644
 +                    pub st_uid: uid_t,
 +                    pub st_gid: gid_t,
 +                    pub st_rdev: dev_t,
-+                    pub st_atime: time_t,
-+                    pub st_atime_nsec: c_long,
-+                    pub st_mtime: time_t,
-+                    pub st_mtime_nsec: c_long,
-+                    pub st_ctime: time_t,
-+                    pub st_ctime_nsec: c_long,
++                    pub st_atim: timespec,
++                    pub st_mtim: timespec,
++                    pub st_ctim: timespec,
 +                    pub st_size: off_t,
-+                    pub st_blocks: blkcnt_t,
-+                    pub st_blksize: c_uint,
-+                    pub st_flags: c_uint,
-+                    pub st_gen: c_uint,
++                    pub st_blocks: int64_t,
++                    pub st_blksize: uint32_t,
++                    pub st_flags: uint32_t,
++                    pub st_gen: uint32_t,
++                    pub __st_birthtim: timespec,
 +                }
-+
 +                #[repr(C)]
-+                pub struct utimbuf {
++                #[deriving(Copy)] pub struct utimbuf {
 +                    pub actime: time_t,
 +                    pub modtime: time_t,
 +                }
@@ -505,7 +465,7 @@ index 1a86ef2..017ee09 100644
                  use types::os::arch::extra::{int64, time64_t};
                  use types::os::arch::posix88::{dev_t, ino_t};
  
-@@ -3165,17 +3474,17 @@ pub mod consts {
+@@ -3188,17 +3405,17 @@ pub mod consts {
              pub const _SC_VERSION : c_int = 25;
              pub const _SC_RE_DUP_MAX : c_int = 26;
              pub const _SC_STREAM_MAX : c_int = 27;
@@ -515,7 +475,7 @@ index 1a86ef2..017ee09 100644
      }
  
 -    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
++    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig"))]
      pub mod os {
          pub mod c95 {
              use types::os::arch::c95::{c_int, c_uint};
@@ -524,7 +484,7 @@ index 1a86ef2..017ee09 100644
              pub const EXIT_SUCCESS : c_int = 0;
              pub const RAND_MAX : c_int = 2147483647;
              pub const EOF : c_int = -1;
-@@ -3435,16 +3744,19 @@ pub mod consts {
+@@ -3458,16 +3675,19 @@ pub mod consts {
                            target_arch = "mipsel",
                            target_arch = "x86",
                            target_arch = "x86_64")))]
@@ -533,7 +493,7 @@ index 1a86ef2..017ee09 100644
              #[cfg(target_os = "dragonfly")]
              pub const PTHREAD_STACK_MIN: size_t = 1024;
  
-+            #[cfg(target_os = "openbsd")]
++            #[cfg(target_os = "bitrig")]
 +            pub const PTHREAD_STACK_MIN: size_t = 2048;
 +
              pub const CLOCK_REALTIME: c_int = 0;
@@ -544,7 +504,27 @@ index 1a86ef2..017ee09 100644
          pub mod bsd44 {
              use types::os::arch::c95::c_int;
  
-@@ -4270,44 +4582,47 @@ pub mod funcs {
+@@ -3538,16 +3758,19 @@ pub mod consts {
+             pub const MAP_RENAME : c_int = 0x0020;
+             pub const MAP_NORESERVE : c_int = 0x0040;
+             pub const MAP_HASSEMAPHORE : c_int = 0x0200;
+             pub const MAP_STACK : c_int = 0x0400;
+             pub const MAP_NOSYNC : c_int = 0x0800;
+             pub const MAP_NOCORE : c_int = 0x020000;
+ 
+             pub const IPPROTO_RAW : c_int = 255;
++
++            #[cfg(target_os = "bitrig")]
++            pub const PATH_MAX: c_int = 1024;
+         }
+         pub mod sysconf {
+             use types::os::arch::c95::c_int;
+ 
+             pub const _SC_ARG_MAX : c_int = 1;
+             pub const _SC_CHILD_MAX : c_int = 2;
+             pub const _SC_CLK_TCK : c_int = 3;
+             pub const _SC_NGROUPS_MAX : c_int = 4;
+@@ -4293,44 +4516,47 @@ pub mod funcs {
          }
      }
  
@@ -555,7 +535,7 @@ index 1a86ef2..017ee09 100644
                target_os = "freebsd",
 -              target_os = "dragonfly"))]
 +              target_os = "dragonfly",
-+              target_os = "openbsd"))]
++              target_os = "bitrig"))]
      pub mod posix88 {
          pub mod stat_ {
              use types::os::arch::c95::{c_char, c_int};
@@ -569,7 +549,7 @@ index 1a86ef2..017ee09 100644
                  #[cfg(any(target_os = "linux",
                            target_os = "freebsd",
                            target_os = "dragonfly",
-+                          target_os = "openbsd",
++                          target_os = "bitrig",
                            target_os = "android",
                            target_os = "ios"))]
                  pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
@@ -584,7 +564,7 @@ index 1a86ef2..017ee09 100644
                  #[cfg(any(target_os = "linux",
                            target_os = "freebsd",
                            target_os = "dragonfly",
-+                          target_os = "openbsd",
++                          target_os = "bitrig",
                            target_os = "android",
                            target_os = "ios"))]
                  pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
@@ -593,7 +573,7 @@ index 1a86ef2..017ee09 100644
                  #[link_name = "stat64"]
                  pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4489,26 +4804,28 @@ pub mod funcs {
+@@ -4513,26 +4739,28 @@ pub mod funcs {
  
      }
  
@@ -604,7 +584,7 @@ index 1a86ef2..017ee09 100644
                target_os = "freebsd",
 -              target_os = "dragonfly"))]
 +              target_os = "dragonfly",
-+              target_os = "openbsd"))]
++              target_os = "bitrig"))]
      pub mod posix01 {
          pub mod stat_ {
              use types::os::arch::c95::{c_char, c_int};
@@ -614,7 +594,7 @@ index 1a86ef2..017ee09 100644
                  #[cfg(any(target_os = "linux",
                            target_os = "freebsd",
                            target_os = "dragonfly",
-+                          target_os = "openbsd",
++                          target_os = "bitrig",
                            target_os = "android",
                            target_os = "ios"))]
                  pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
@@ -623,7 +603,7 @@ index 1a86ef2..017ee09 100644
                  #[link_name = "lstat64"]
                  pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4606,17 +4923,18 @@ pub mod funcs {
+@@ -4630,17 +4858,18 @@ pub mod funcs {
  
  
      #[cfg(any(target_os = "windows",
@@ -634,7 +614,7 @@ index 1a86ef2..017ee09 100644
                target_os = "freebsd",
 -              target_os = "dragonfly"))]
 +              target_os = "dragonfly",
-+              target_os = "openbsd"))]
++              target_os = "bitrig"))]
      pub mod posix08 {
          pub mod unistd {
          }
@@ -643,7 +623,7 @@ index 1a86ef2..017ee09 100644
      #[cfg(not(windows))]
      pub mod bsd43 {
          use types::common::c95::{c_void};
-@@ -4692,17 +5010,18 @@ pub mod funcs {
+@@ -4716,17 +4945,18 @@ pub mod funcs {
                            addrlen: c_int) -> c_int;
              pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
          }
@@ -654,7 +634,7 @@ index 1a86ef2..017ee09 100644
                target_os = "freebsd",
 -              target_os = "dragonfly"))]
 +              target_os = "dragonfly",
-+              target_os = "openbsd"))]
++              target_os = "bitrig"))]
      pub mod bsd44 {
          use types::common::c95::{c_void};
          use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, c_ulong, size_t};
@@ -663,7 +643,30 @@ index 1a86ef2..017ee09 100644
              pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
              pub fn sysctl(name: *mut c_int,
                            namelen: c_uint,
-@@ -4755,17 +5074,17 @@ pub mod funcs {
+@@ -4745,20 +4975,21 @@ pub mod funcs {
+                                    mibp: *mut c_int,
+                                    sizep: *mut size_t)
+                                    -> c_int;
+             pub fn getdtablesize() -> c_int;
+             pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
+                            -> c_int;
+             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
+                            -> c_int;
++            pub fn realpath(pathname: *const c_char, resolved: *mut c_char)
++                            -> *mut c_char;
+         }
+     }
+ 
+-
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     pub mod bsd44 {
+         use types::common::c95::{c_void};
+         use types::os::arch::c95::{c_uchar, c_int, size_t};
+ 
+         extern {
+             pub fn getdtablesize() -> c_int;
+             pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
+@@ -4779,17 +5010,17 @@ pub mod funcs {
          use types::os::arch::c95::{c_char, c_int};
  
          extern {
@@ -673,7 +676,7 @@ index 1a86ef2..017ee09 100644
      }
  
 -    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
++    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig"))]
      pub mod extra {
      }
  
@@ -681,32 +684,9 @@ index 1a86ef2..017ee09 100644
      pub mod extra {
      }
  
- diff --git a/src/libnative/io/process.rs b/src/libnative/io/process.rs
-index 30c916f..dc6e3b5 100644
---- a/src/libnative/io/process.rs
-+++ b/src/libnative/io/process.rs
-@@ -845,17 +845,18 @@ fn translate_status(status: c_int) -> rtio::ProcessExit {
-         pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
-         pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
-         pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
-     }
  
-     #[cfg(any(target_os = "macos",
-               target_os = "ios",
-               target_os = "freebsd",
--              target_os = "dragonfly"))]
-+              target_os = "dragonfly",
-+              target_os = "openbsd"))]
-     mod imp {
-         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
-         pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
-         pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
-     }
- 
-     if imp::WIFEXITED(status) {
-         rtio::ExitStatus(imp::WEXITSTATUS(status) as int)
 diff --git a/src/librustc_back/arm.rs b/src/librustc_back/arm.rs
-index 134f710..55904a0 100644
+index ea4d5c8..077a856 100644
 --- a/src/librustc_back/arm.rs
 +++ b/src/librustc_back/arm.rs
 @@ -56,17 +56,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -719,7 +699,7 @@ index 134f710..55904a0 100644
            }
  
 -          abi::OsFreebsd | abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
              "e-p:32:32:32\
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
@@ -729,7 +709,7 @@ index 134f710..55904a0 100644
          },
  
 diff --git a/src/librustc_back/mips.rs b/src/librustc_back/mips.rs
-index 322f001..7e6b7f6 100644
+index 322f001..1a986c9 100644
 --- a/src/librustc_back/mips.rs
 +++ b/src/librustc_back/mips.rs
 @@ -51,17 +51,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -742,7 +722,7 @@ index 322f001..7e6b7f6 100644
            }
  
 -          abi::OsFreebsd | abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
              "E-p:32:32:32\
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
@@ -752,7 +732,7 @@ index 322f001..7e6b7f6 100644
          },
  
 diff --git a/src/librustc_back/mipsel.rs b/src/librustc_back/mipsel.rs
-index e7ce5b0..6b7df49 100644
+index e7ce5b0..9cd8674 100644
 --- a/src/librustc_back/mipsel.rs
 +++ b/src/librustc_back/mipsel.rs
 @@ -51,17 +51,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -765,7 +745,7 @@ index e7ce5b0..6b7df49 100644
            }
  
 -          abi::OsFreebsd | abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::Bitrig => {
              "e-p:32:32:32\
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
@@ -775,140 +755,34 @@ index e7ce5b0..6b7df49 100644
          },
  
 diff --git a/src/librustc_back/rpath.rs b/src/librustc_back/rpath.rs
-index 974d8f8..4a45eb4 100644
+index 955081a..ca233a7 100644
 --- a/src/librustc_back/rpath.rs
 +++ b/src/librustc_back/rpath.rs
-@@ -225,16 +225,31 @@ mod test {
-             get_install_prefix_lib_path: || panic!(),
+@@ -210,17 +210,17 @@ mod test {
+             is_like_osx: false,
              realpath: |p| Ok(p.clone())
          };
          let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-         assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+         assert_eq!(res, "$ORIGIN/../lib");
      }
  
      #[test]
-+    #[cfg(target_os = "openbsd")]
-+    fn test_rpath_relative() {
-+        let config = &mut RPathConfig {
-+            used_crates: Vec::new(),
-+            has_rpath: true,
-+            is_like_osx: false,
-+            out_filename: Path::new("bin/rustc"),
-+            get_install_prefix_lib_path: || panic!(),
-+            realpath: |p| Ok(p.clone())
-+        };
-+        let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-+        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
-+    }
-+
-+    #[test]
-     #[cfg(target_os = "macos")]
+-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
++    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig"))]
      fn test_rpath_relative() {
          let config = &mut RPathConfig {
              used_crates: Vec::new(),
              has_rpath: true,
-             is_like_osx: true,
+             is_like_osx: false,
              out_filename: Path::new("bin/rustc"),
              get_install_prefix_lib_path: || panic!(),
-diff --git a/src/librustc_back/target/i386_unknown_openbsd.rs b/src/librustc_back/target/i386_unknown_openbsd.rs
+             realpath: |p| Ok(p.clone())
+diff --git a/src/librustc_back/target/bitrig_base.rs b/src/librustc_back/target/bitrig_base.rs
 new file mode 100644
-index 0000000..936fbaf
+index 0000000..83626e3
 --- /dev/null
-+++ b/src/librustc_back/target/i386_unknown_openbsd.rs
-@@ -0,0 +1,26 @@
-+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-+// file at the top-level directory of this distribution and at
-+// http://rust-lang.org/COPYRIGHT.
-+//
-+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-+// option. This file may not be copied, modified, or distributed
-+// except according to those terms.
-+
-+use target::Target;
-+
-+pub fn target() -> Target {
-+    let mut base = super::openbsd_base::opts();
-+    base.pre_link_args.push("-m32".to_string());
-+
-+    Target {
-+        data_layout: "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string(),
-+        llvm_target: "i386-unknown-openbsd".to_string(),
-+        target_endian: "little".to_string(),
-+        target_word_size: "32".to_string(),
-+        arch: "x86".to_string(),
-+        target_os: "openbsd".to_string(),
-+        options: base,
-+    }
-+}
-diff --git a/src/librustc_back/target/mod.rs b/src/librustc_back/target/mod.rs
-index d7b4285..e2c3e85 100644
---- a/src/librustc_back/target/mod.rs
-+++ b/src/librustc_back/target/mod.rs
-@@ -50,33 +50,36 @@ use syntax::{diagnostic, abi};
- use std::default::Default;
- use std::io::fs::PathExtensions;
- 
- mod windows_base;
- mod linux_base;
- mod apple_base;
- mod freebsd_base;
- mod dragonfly_base;
-+mod openbsd_base;
- 
- mod arm_apple_ios;
- mod arm_linux_androideabi;
- mod arm_unknown_linux_gnueabi;
- mod arm_unknown_linux_gnueabihf;
- mod i686_apple_darwin;
- mod i386_apple_ios;
- mod i686_pc_windows_gnu;
- mod i686_unknown_dragonfly;
- mod i686_unknown_linux_gnu;
-+mod i386_unknown_openbsd;
- mod mips_unknown_linux_gnu;
- mod mipsel_unknown_linux_gnu;
- mod x86_64_apple_darwin;
- mod x86_64_pc_windows_gnu;
- mod x86_64_unknown_freebsd;
- mod x86_64_unknown_dragonfly;
- mod x86_64_unknown_linux_gnu;
-+mod x86_64_unknown_openbsd;
- 
- /// Everything `rustc` knows about how to compile for a specific target.
- ///
- /// Every field here must be specified, and has no default value.
- #[deriving(Clone, Show)]
- pub struct Target {
-     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-     pub data_layout: String,
-@@ -337,16 +340,19 @@ impl Target {
-             arm_unknown_linux_gnueabi,
-             arm_unknown_linux_gnueabihf,
- 
-             x86_64_unknown_freebsd,
- 
-             i686_unknown_dragonfly,
-             x86_64_unknown_dragonfly,
- 
-+            i386_unknown_openbsd,
-+            x86_64_unknown_openbsd,
-+
-             x86_64_apple_darwin,
-             i686_apple_darwin,
-             i386_apple_ios,
-             arm_apple_ios,
- 
-             x86_64_pc_windows_gnu,
-             i686_pc_windows_gnu
-         )
-diff --git a/src/librustc_back/target/openbsd_base.rs b/src/librustc_back/target/openbsd_base.rs
-new file mode 100644
-index 0000000..500c636
---- /dev/null
-+++ b/src/librustc_back/target/openbsd_base.rs
-@@ -0,0 +1,30 @@
++++ b/src/librustc_back/target/bitrig_base.rs
+@@ -0,0 +1,28 @@
 +// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 +// file at the top-level directory of this distribution and at
 +// http://rust-lang.org/COPYRIGHT.
@@ -929,21 +803,77 @@ index 0000000..500c636
 +        executables: true,
 +        morestack: true,
 +        has_rpath: true,
++        position_independent_executables: true,
 +        pre_link_args: vec!(
-+            "-L/usr/lib".to_string(),
-+            "-L/usr/lib/gcc".to_string(),
 +            "-L/usr/local/lib".to_string(),
 +        ),
 +
 +        .. Default::default()
 +    }
 +}
+diff --git a/src/librustc_back/target/mod.rs b/src/librustc_back/target/mod.rs
+index 99a25be..2ee0fb8 100644
+--- a/src/librustc_back/target/mod.rs
++++ b/src/librustc_back/target/mod.rs
+@@ -50,32 +50,34 @@ use syntax::{diagnostic, abi};
+ use std::default::Default;
+ use std::io::fs::PathExtensions;
+ 
+ mod windows_base;
+ mod linux_base;
+ mod apple_base;
+ mod freebsd_base;
+ mod dragonfly_base;
++mod bitrig_base;
+ 
+ mod arm_apple_ios;
+ mod arm_linux_androideabi;
+ mod arm_unknown_linux_gnueabi;
+ mod arm_unknown_linux_gnueabihf;
+ mod i686_apple_darwin;
+ mod i386_apple_ios;
+ mod i686_pc_windows_gnu;
+ mod i686_unknown_dragonfly;
+ mod i686_unknown_linux_gnu;
+ mod mips_unknown_linux_gnu;
+ mod mipsel_unknown_linux_gnu;
+ mod x86_64_apple_darwin;
+ mod x86_64_pc_windows_gnu;
+ mod x86_64_unknown_freebsd;
+ mod x86_64_unknown_dragonfly;
++mod x86_64_unknown_bitrig;
+ mod x86_64_unknown_linux_gnu;
+ 
+ /// Everything `rustc` knows about how to compile for a specific target.
+ ///
+ /// Every field here must be specified, and has no default value.
+ #[deriving(Clone, Show)]
+ pub struct Target {
+     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
+@@ -336,16 +338,18 @@ impl Target {
+             arm_unknown_linux_gnueabi,
+             arm_unknown_linux_gnueabihf,
+ 
+             x86_64_unknown_freebsd,
+ 
+             i686_unknown_dragonfly,
+             x86_64_unknown_dragonfly,
+ 
++            x86_64_unknown_bitrig,
 +
-diff --git a/src/librustc_back/target/x86_64_unknown_openbsd.rs b/src/librustc_back/target/x86_64_unknown_openbsd.rs
+             x86_64_apple_darwin,
+             i686_apple_darwin,
+             i386_apple_ios,
+             arm_apple_ios,
+ 
+             x86_64_pc_windows_gnu,
+             i686_pc_windows_gnu
+         );
+diff --git a/src/librustc_back/target/x86_64_unknown_bitrig.rs b/src/librustc_back/target/x86_64_unknown_bitrig.rs
 new file mode 100644
-index 0000000..f985b71
+index 0000000..bc4f8b6
 --- /dev/null
-+++ b/src/librustc_back/target/x86_64_unknown_openbsd.rs
++++ b/src/librustc_back/target/x86_64_unknown_bitrig.rs
 @@ -0,0 +1,28 @@
 +// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 +// file at the top-level directory of this distribution and at
@@ -958,23 +888,23 @@ index 0000000..f985b71
 +use target::Target;
 +
 +pub fn target() -> Target {
-+    let mut base = super::openbsd_base::opts();
++    let mut base = super::bitrig_base::opts();
 +    base.pre_link_args.push("-m64".to_string());
 +
 +    Target {
 +        data_layout: "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
 +                     f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
 +                     s0:64:64-f80:128:128-n8:16:32:64-S128".to_string(),
-+        llvm_target: "x86_64-unknown-openbsd".to_string(),
++        llvm_target: "x86_64-unknown-bitrig".to_string(),
 +        target_endian: "little".to_string(),
 +        target_word_size: "64".to_string(),
 +        arch: "x86_64".to_string(),
-+        target_os: "openbsd".to_string(),
++        target_os: "bitrig".to_string(),
 +        options: base,
 +    }
 +}
 diff --git a/src/librustc_back/x86.rs b/src/librustc_back/x86.rs
-index 21c4fd4..87d7efa 100644
+index 21c4fd4..0aab47c 100644
 --- a/src/librustc_back/x86.rs
 +++ b/src/librustc_back/x86.rs
 @@ -40,20 +40,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os)
@@ -990,7 +920,7 @@ index 21c4fd4..87d7efa 100644
 -            "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
 -          }
 -          abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::Bitrig => {
              "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
            }
  
@@ -1000,7 +930,7 @@ index 21c4fd4..87d7efa 100644
  
          cc_args: vec!("-m32".to_string()),
 diff --git a/src/librustc_back/x86_64.rs b/src/librustc_back/x86_64.rs
-index 88cd674..c360b36 100644
+index 88cd674..fe65020 100644
 --- a/src/librustc_back/x86_64.rs
 +++ b/src/librustc_back/x86_64.rs
 @@ -42,22 +42,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -1018,7 +948,7 @@ index 88cd674..c360b36 100644
 -                s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
 -          }
 -          abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::Bitrig => {
              "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
                  f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
                  s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
@@ -1028,40 +958,20 @@ index 88cd674..c360b36 100644
  
          target_triple: target_triple,
 diff --git a/src/librustdoc/flock.rs b/src/librustdoc/flock.rs
-index a89b20c..231e994 100644
+index a89b20c..837a110 100644
 --- a/src/librustdoc/flock.rs
 +++ b/src/librustdoc/flock.rs
-@@ -79,16 +79,37 @@ mod imp {
+@@ -58,17 +58,17 @@ mod imp {
          }
  
          pub const F_UNLCK: libc::c_short = 2;
          pub const F_WRLCK: libc::c_short = 3;
-         pub const F_SETLK: libc::c_int = 8;
-         pub const F_SETLKW: libc::c_int = 9;
+         pub const F_SETLK: libc::c_int = 12;
+         pub const F_SETLKW: libc::c_int = 13;
      }
  
-+    #[cfg(target_os = "openbsd")]
-+    mod os {
-+        use libc;
-+
-+        pub struct flock {
-+            pub l_start: libc::off_t,
-+            pub l_len: libc::off_t,
-+            pub l_pid: libc::pid_t,
-+            pub l_type: libc::c_short,
-+            pub l_whence: libc::c_short,
-+
-+            // not actually here, but brings in line with freebsd (DH: why?)
-+            pub l_sysid: libc::c_int,
-+        }
-+
-+        pub const F_UNLCK: libc::c_short = 2;
-+        pub const F_WRLCK: libc::c_short = 3;
-+        pub const F_SETLK: libc::c_int = 8;
-+        pub const F_SETLKW: libc::c_int = 9;
-+    }
-+
-     #[cfg(any(target_os = "macos", target_os = "ios"))]
+-    #[cfg(target_os = "dragonfly")]
++    #[cfg(any(target_os = "dragonfly", target_os = "bitrig"))]
      mod os {
          use libc;
  
@@ -1069,10 +979,126 @@ index a89b20c..231e994 100644
              pub l_start: libc::off_t,
              pub l_len: libc::off_t,
              pub l_pid: libc::pid_t,
-diff --git a/src/librustrt/args.rs b/src/librustrt/args.rs
-index 5eecc0a..d8bb9a6 100644
---- a/src/librustrt/args.rs
-+++ b/src/librustrt/args.rs
+             pub l_type: libc::c_short,
+diff --git a/src/libstd/dynamic_lib.rs b/src/libstd/dynamic_lib.rs
+index 368abe7..51ff86a 100644
+--- a/src/libstd/dynamic_lib.rs
++++ b/src/libstd/dynamic_lib.rs
+@@ -176,34 +176,36 @@ mod test {
+                    expected_result, result)
+         }
+     }
+ 
+     #[test]
+     #[cfg(any(target_os = "linux",
+               target_os = "macos",
+               target_os = "freebsd",
+-              target_os = "dragonfly"))]
++              target_os = "dragonfly",
++              target_os = "bitrig"))]
+     fn test_errors_do_not_crash() {
+         // Open /dev/null as a library to get an error, and make sure
+         // that only causes an error, and not a crash.
+         let path = Path::new("/dev/null");
+         match DynamicLibrary::open(Some(&path)) {
+             Err(_) => {}
+             Ok(_) => panic!("Successfully opened the empty library.")
+         }
+     }
+ }
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "android",
+           target_os = "macos",
+           target_os = "ios",
+           target_os = "freebsd",
+-          target_os = "dragonfly"))]
++          target_os = "dragonfly",
++          target_os = "bitrig"))]
+ pub mod dl {
+     use self::Rtld::*;
+ 
+     use prelude::*;
+     use c_str::CString;
+     use libc;
+     use ptr;
+ 
+diff --git a/src/libstd/os.rs b/src/libstd/os.rs
+index ceb9a41..77cc0a8 100644
+--- a/src/libstd/os.rs
++++ b/src/libstd/os.rs
+@@ -692,17 +692,18 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+     }
+ 
+     res
+ }
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "android",
+           target_os = "freebsd",
+-          target_os = "dragonfly"))]
++          target_os = "dragonfly",
++          target_os = "bitrig"))]
+ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+     use rt;
+     rt::args::clone().unwrap_or_else(|| vec![])
+ }
+ 
+ #[cfg(not(windows))]
+ fn real_args() -> Vec<String> {
+     real_args_as_bytes().into_iter()
+@@ -1330,16 +1331,47 @@ pub mod consts {
+     /// platform: in this case, the empty string.
+     pub const EXE_SUFFIX: &'static str = "";
+ 
+     /// Specifies the file extension, if any, used for executable binaries
+     /// on this platform: in this case, the empty string.
+     pub const EXE_EXTENSION: &'static str = "";
+ }
+ 
++#[cfg(target_os = "bitrig")]
++pub mod consts {
++    pub use os::arch_consts::ARCH;
++
++    pub const FAMILY: &'static str = "unix";
++
++    /// A string describing the specific operating system in use: in this
++    /// case, `bitrig`.
++    pub const SYSNAME: &'static str = "bitrig";
++
++    /// Specifies the filename prefix used for shared libraries on this
++    /// platform: in this case, `lib`.
++    pub const DLL_PREFIX: &'static str = "lib";
++
++    /// Specifies the filename suffix used for shared libraries on this
++    /// platform: in this case, `.so`.
++    pub const DLL_SUFFIX: &'static str = ".so";
++
++    /// Specifies the file extension used for shared libraries on this
++    /// platform that goes after the dot: in this case, `so`.
++    pub const DLL_EXTENSION: &'static str = "so";
++
++    /// Specifies the filename suffix used for executable binaries on this
++    /// platform: in this case, the empty string.
++    pub const EXE_SUFFIX: &'static str = "";
++
++    /// Specifies the file extension, if any, used for executable binaries
++    /// on this platform: in this case, the empty string.
++    pub const EXE_EXTENSION: &'static str = "";
++}
++
+ #[cfg(target_os = "android")]
+ pub mod consts {
+     pub use os::arch_consts::ARCH;
+ 
+     pub const FAMILY: &'static str = "unix";
+ 
+     /// A string describing the specific operating system in use: in this
+     /// case, `android`.
+diff --git a/src/libstd/rt/args.rs b/src/libstd/rt/args.rs
+index b1f2685..e962075 100644
+--- a/src/libstd/rt/args.rs
++++ b/src/libstd/rt/args.rs
 @@ -37,17 +37,18 @@ pub fn take() -> Option<Vec<Vec<u8>>> { imp::take() }
  pub fn put(args: Vec<Vec<u8>>) { imp::put(args) }
  
@@ -1084,30 +1110,21 @@ index 5eecc0a..d8bb9a6 100644
            target_os = "freebsd",
 -          target_os = "dragonfly"))]
 +          target_os = "dragonfly",
-+          target_os = "openbsd"))]
++          target_os = "bitrig"))]
  mod imp {
-     use core::prelude::*;
+     use prelude::*;
  
-     use alloc::boxed::Box;
-     use collections::slice::CloneSliceAllocPrelude;
-     use collections::vec::Vec;
-     use core::mem;
-     use core::slice;
-diff --git a/src/librustrt/libunwind.rs b/src/librustrt/libunwind.rs
-index e4565be..b664b78 100644
---- a/src/librustrt/libunwind.rs
-+++ b/src/librustrt/libunwind.rs
-@@ -89,17 +89,17 @@ pub enum _Unwind_Context {}
- pub type _Unwind_Exception_Cleanup_Fn =
-         extern "C" fn(unwind_code: _Unwind_Reason_Code,
-                       exception: *mut _Unwind_Exception);
+     use mem;
+     use slice;
  
- #[cfg(any(target_os = "linux", target_os = "freebsd"))]
- #[link(name = "gcc_s")]
- extern {}
+     use sync::{StaticMutex, MUTEX_INIT};
  
--#[cfg(target_os = "android")]
-+#[cfg(any(target_os = "android", target_os = "openbsd"))]
+diff --git a/src/libstd/rt/libunwind.rs b/src/libstd/rt/libunwind.rs
+index 2feea7f..a40c779 100644
+--- a/src/libstd/rt/libunwind.rs
++++ b/src/libstd/rt/libunwind.rs
+@@ -98,16 +98,20 @@ extern {}
+ #[cfg(target_os = "android")]
  #[link(name = "gcc")]
  extern {}
  
@@ -1115,34 +1132,80 @@ index e4565be..b664b78 100644
  #[link(name = "gcc_pic")]
  extern {}
  
++#[cfg(target_os = "bitrig")]
++#[link(name = "c++abi")]
++extern {}
++
  extern "C" {
-diff --git a/src/librustrt/mutex.rs b/src/librustrt/mutex.rs
-index 1c44873..6a8b1e2 100644
---- a/src/librustrt/mutex.rs
-+++ b/src/librustrt/mutex.rs
-@@ -341,17 +341,17 @@ mod imp {
-     use libc;
-     use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
-                    pthread_mutex_t, pthread_cond_t};
-     use core::cell::UnsafeCell;
+     // iOS on armv7 uses SjLj exceptions and requires to link
+     // against corresponding routine (..._SjLj_...)
+     #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
+     pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception)
+                                   -> _Unwind_Reason_Code;
  
-     type pthread_mutexattr_t = libc::c_void;
-     type pthread_condattr_t = libc::c_void;
+     #[cfg(all(target_os = "ios", target_arch = "arm"))]
+diff --git a/src/libstd/rtdeps.rs b/src/libstd/rtdeps.rs
+index 862808a..6814806 100644
+--- a/src/libstd/rtdeps.rs
++++ b/src/libstd/rtdeps.rs
+@@ -34,17 +34,17 @@ extern {}
+ #[link(name = "log")]
+ extern {}
  
+ #[cfg(target_os = "freebsd")]
+ #[link(name = "execinfo")]
+ #[link(name = "pthread")]
+ extern {}
+ 
+-#[cfg(target_os = "dragonfly")]
++#[cfg(any(target_os = "dragonfly", target_os = "bitrig"))]
+ #[link(name = "pthread")]
+ extern {}
+ 
+ #[cfg(target_os = "macos")]
+ #[link(name = "System")]
+ extern {}
+ 
+ #[cfg(target_os = "ios")]
+diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
+index 382f687..8cebd7d 100644
+--- a/src/libstd/sys/common/net.rs
++++ b/src/libstd/sys/common/net.rs
+@@ -644,25 +644,28 @@ impl TcpStream {
+         }
+     }
+ 
+     #[cfg(any(target_os = "macos", target_os = "ios"))]
+     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
+                    seconds as libc::c_int)
+     }
 -    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
-     mod os {
-         use libc;
++    #[cfg(any(target_os = "freebsd", 
++              target_os = "dragonfly",
++              target_os = "bitrig"))]
+     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
+                    seconds as libc::c_int)
+     }
+     #[cfg(not(any(target_os = "macos",
+                   target_os = "ios",
+                   target_os = "freebsd",
+-                  target_os = "dragonfly")))]
++                  target_os = "dragonfly",
++                  target_os = "bitrig")))]
+     fn set_tcp_keepalive(&mut self, _seconds: uint) -> IoResult<()> {
+         Ok(())
+     }
  
-         pub type pthread_mutex_t = *mut libc::c_void;
-         pub type pthread_cond_t = *mut libc::c_void;
+     #[cfg(target_os = "linux")]
+     fn lock_nonblocking(&self) {}
  
-         pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t =
-             0 as pthread_mutex_t;
-diff --git a/src/librustrt/stack.rs b/src/librustrt/stack.rs
-index 4874f64..89e1eb3 100644
---- a/src/librustrt/stack.rs
-+++ b/src/librustrt/stack.rs
+     #[cfg(not(target_os = "linux"))]
+diff --git a/src/libstd/sys/common/stack.rs b/src/libstd/sys/common/stack.rs
+index 2a88e20..ddc14e4 100644
+--- a/src/libstd/sys/common/stack.rs
++++ b/src/libstd/sys/common/stack.rs
 @@ -184,17 +184,19 @@ pub unsafe fn record_sp_limit(limit: uint) {
      }
      #[cfg(all(target_arch = "x86_64", target_os = "windows"))] #[inline(always)]
@@ -1154,7 +1217,7 @@ index 4874f64..89e1eb3 100644
      }
 -    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))] #[inline(always)]
 +    #[cfg(all(target_arch = "x86_64", 
-+              any(target_os = "dragonfly", target_os = "openbsd")))] 
++              any(target_os = "dragonfly", target_os = "bitrig")))] 
 +    #[inline(always)]
      unsafe fn target_record_sp_limit(limit: uint) {
          asm!("movq $0, %fs:32" :: "r"(limit) :: "volatile")
@@ -1164,28 +1227,7 @@ index 4874f64..89e1eb3 100644
      #[cfg(all(target_arch = "x86",
                any(target_os = "macos", target_os = "ios")))]
      #[inline(always)]
-@@ -203,16 +205,20 @@ pub unsafe fn record_sp_limit(limit: uint) {
-               movl $0, %gs:(%eax)" :: "r"(limit) : "eax" : "volatile")
-     }
-     #[cfg(all(target_arch = "x86",
-               any(target_os = "linux", target_os = "freebsd")))]
-     #[inline(always)]
-     unsafe fn target_record_sp_limit(limit: uint) {
-         asm!("movl $0, %gs:48" :: "r"(limit) :: "volatile")
-     }
-+    #[cfg(all(target_arch = "x86", target_os = "openbsd"))] #[inline(always)]
-+    unsafe fn target_record_sp_limit(limit: uint) {
-+        asm!("movl $0, %gs:16" :: "r"(limit) :: "volatile")
-+    }
-     #[cfg(all(target_arch = "x86", target_os = "windows"))] #[inline(always)]
-     unsafe fn target_record_sp_limit(_: uint) {
-     }
- 
-     // mips, arm - Some brave soul can port these to inline asm, but it's over
-     //             my head personally
-     #[cfg(any(target_arch = "mips",
-               target_arch = "mipsel",
-@@ -265,17 +271,19 @@ pub unsafe fn get_sp_limit() -> uint {
+@@ -265,17 +267,19 @@ pub unsafe fn get_sp_limit() -> uint {
          return 1024;
      }
      #[cfg(all(target_arch = "x86_64", target_os = "freebsd"))] #[inline(always)]
@@ -1195,8 +1237,8 @@ index 4874f64..89e1eb3 100644
          return limit;
      }
 -    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))] #[inline(always)]
-+    #[cfg(all(target_arch = "x86_64", 
-+              any(target_os = "dragonfly", target_os = "openbsd")))] 
++    #[cfg(all(target_arch = "x86_64",
++              any(target_os = "dragonfly", target_os = "bitrig")))] 
 +    #[inline(always)]
      unsafe fn target_get_sp_limit() -> uint {
          let limit;
@@ -1206,267 +1248,11 @@ index 4874f64..89e1eb3 100644
  
  
      // x86
-@@ -291,16 +299,22 @@ pub unsafe fn get_sp_limit() -> uint {
-     #[cfg(all(target_arch = "x86",
-               any(target_os = "linux", target_os = "freebsd")))]
-     #[inline(always)]
-     unsafe fn target_get_sp_limit() -> uint {
-         let limit;
-         asm!("movl %gs:48, $0" : "=r"(limit) ::: "volatile");
-         return limit;
-     }
-+    #[cfg(all(target_arch = "x86", target_os = "openbsd"))] #[inline(always)]
-+    unsafe fn target_get_sp_limit() -> uint {
-+        let limit;
-+        asm!("movl %gs:16, $0" : "=r"(limit) ::: "volatile");
-+        return limit;
-+    }
-     #[cfg(all(target_arch = "x86", target_os = "windows"))] #[inline(always)]
-     unsafe fn target_get_sp_limit() -> uint {
-         return 1024;
-     }
- 
-     // mips, arm - Some brave soul can port these to inline asm, but it's over
-     //             my head personally
-     #[cfg(any(target_arch = "mips",
-diff --git a/src/librustrt/thread_local_storage.rs b/src/librustrt/thread_local_storage.rs
-index aee7098..46d3c0b 100644
---- a/src/librustrt/thread_local_storage.rs
-+++ b/src/librustrt/thread_local_storage.rs
-@@ -39,16 +39,17 @@ pub unsafe fn destroy(key: Key) {
- 
- #[cfg(target_os = "macos")]
- #[allow(non_camel_case_types)] // foreign type
- type pthread_key_t = ::libc::c_ulong;
- 
- #[cfg(any(target_os="linux",
-           target_os="freebsd",
-           target_os="dragonfly",
-+          target_os="openbsd",
-           target_os="android",
-           target_os = "ios"))]
- #[allow(non_camel_case_types)] // foreign type
- type pthread_key_t = ::libc::c_uint;
- 
- #[cfg(unix)]
- extern {
-     fn pthread_key_create(key: *mut pthread_key_t, dtor: *const u8) -> c_int;
-diff --git a/src/libstd/dynamic_lib.rs b/src/libstd/dynamic_lib.rs
-index 8bb82d5..2584d8c 100644
---- a/src/libstd/dynamic_lib.rs
-+++ b/src/libstd/dynamic_lib.rs
-@@ -186,16 +186,17 @@ mod test {
-                    expected_result, result)
-         }
-     }
- 
-     #[test]
-     #[cfg(any(target_os = "linux",
-               target_os = "macos",
-               target_os = "freebsd",
-+              target_os = "openbsd",
-               target_os = "dragonfly"))]
-     fn test_errors_do_not_crash() {
-         // Open /dev/null as a library to get an error, and make sure
-         // that only causes an error, and not a crash.
-         let path = Path::new("/dev/null");
-         match DynamicLibrary::open(Some(&path)) {
-             Err(_) => {}
-             Ok(_) => panic!("Successfully opened the empty library.")
-@@ -203,16 +204,17 @@ mod test {
-     }
- }
- 
- #[cfg(any(target_os = "linux",
-           target_os = "android",
-           target_os = "macos",
-           target_os = "ios",
-           target_os = "freebsd",
-+          target_os = "openbsd",
-           target_os = "dragonfly"))]
- pub mod dl {
-     pub use self::Rtld::*;
- 
-     use c_str::{CString, ToCStr};
-     use libc;
-     use ptr;
-     use result::*;
-diff --git a/src/libstd/os.rs b/src/libstd/os.rs
-index b898b9a..2fc0425 100644
---- a/src/libstd/os.rs
-+++ b/src/libstd/os.rs
-@@ -677,16 +677,21 @@ pub fn self_exe_name() -> Option<Path> {
-                              ptr::null_mut(), 0u as libc::size_t);
-             if err != 0 { return None; }
-             if sz == 0 { return None; }
-             v.set_len(sz as uint - 1); // chop off trailing NUL
-             Some(v)
-         }
-     }
- 
-+    #[cfg(target_os = "openbsd")]
-+    fn load_self() -> Option<Vec<u8>> {
-+      None
-+    }
-+
-     #[cfg(any(target_os = "linux", target_os = "android"))]
-     fn load_self() -> Option<Vec<u8>> {
-         use std::io;
- 
-         match io::fs::readlink(&Path::new("/proc/self/exe")) {
-             Ok(path) => Some(path.into_vec()),
-             Err(..) => None
-         }
-@@ -1032,16 +1037,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
-     }
- 
-     res
- }
- 
- #[cfg(any(target_os = "linux",
-           target_os = "android",
-           target_os = "freebsd",
-+          target_os = "openbsd",
-           target_os = "dragonfly"))]
- fn real_args_as_bytes() -> Vec<Vec<u8>> {
-     use rt;
- 
-     match rt::args::clone() {
-         Some(args) => args,
-         None => panic!("process arguments not initialized")
-     }
-@@ -1644,16 +1650,47 @@ pub mod consts {
-     /// platform: in this case, the empty string.
-     pub const EXE_SUFFIX: &'static str = "";
- 
-     /// Specifies the file extension, if any, used for executable binaries
-     /// on this platform: in this case, the empty string.
-     pub const EXE_EXTENSION: &'static str = "";
- }
- 
-+#[cfg(target_os = "openbsd")]
-+pub mod consts {
-+    pub use os::arch_consts::ARCH;
-+
-+    pub static FAMILY: &'static str = "unix";
-+
-+    /// A string describing the specific operating system in use: in this
-+    /// case, `openbsd`.
-+    pub static SYSNAME: &'static str = "openbsd";
-+
-+    /// Specifies the filename prefix used for shared libraries on this
-+    /// platform: in this case, `lib`.
-+    pub static DLL_PREFIX: &'static str = "lib";
-+
-+    /// Specifies the filename suffix used for shared libraries on this
-+    /// platform: in this case, `.so`.
-+    pub static DLL_SUFFIX: &'static str = ".so";
-+
-+    /// Specifies the file extension used for shared libraries on this
-+    /// platform that goes after the dot: in this case, `so`.
-+    pub static DLL_EXTENSION: &'static str = "so";
-+
-+    /// Specifies the filename suffix used for executable binaries on this
-+    /// platform: in this case, the empty string.
-+    pub static EXE_SUFFIX: &'static str = "";
-+
-+    /// Specifies the file extension, if any, used for executable binaries
-+    /// on this platform: in this case, the empty string.
-+    pub static EXE_EXTENSION: &'static str = "";
-+}
-+
- #[cfg(target_os = "dragonfly")]
- pub mod consts {
-     pub use os::arch_consts::ARCH;
- 
-     pub const FAMILY: &'static str = "unix";
- 
-     /// A string describing the specific operating system in use: in this
-     /// case, `dragonfly`.index 0f888bd..5888d18 100644
---- a/src/libstd/rt/backtrace.rs
-+++ b/src/libstd/rt/backtrace.rs
-@@ -465,17 +465,18 @@ mod imp {
-         //
-         // FIXME: We also call self_exe_name() on DragonFly BSD. I haven't
-         //        tested if this is required or not.
-         unsafe fn init_state() -> *mut backtrace_state {
-             static mut STATE: *mut backtrace_state = 0 as *mut backtrace_state;
-             static mut LAST_FILENAME: [libc::c_char, ..256] = [0, ..256];
-             if !STATE.is_null() { return STATE }
-             let selfname = if cfg!(target_os = "freebsd") ||
--                              cfg!(target_os = "dragonfly") {
-+                              cfg!(target_os = "dragonfly") ||
-+                              cfg!(target_os = "openbsd") {
-                 os::self_exe_name()
-             } else {
-                 None
-             };
-             let filename = match selfname {
-                 Some(path) => {
-                     let bytes = path.as_vec();
-                     if bytes.len() < LAST_FILENAME.len() {
-diff --git a/src/libstd/rtdeps.rs b/src/libstd/rtdeps.rs
-index 35a8713..126a1ba 100644
---- a/src/libstd/rtdeps.rs
-+++ b/src/libstd/rtdeps.rs
-@@ -34,16 +34,21 @@ extern {}
- #[link(name = "log")]
- extern {}
- 
- #[cfg(target_os = "freebsd")]
- #[link(name = "execinfo")]
- #[link(name = "pthread")]
- extern {}
- 
-+#[cfg(target_os = "openbsd")]
-+#[link(name = "execinfo")]
-+#[link(name = "pthread")]
-+extern {}
-+
- #[cfg(target_os = "dragonfly")]
- #[link(name = "pthread")]
- extern {}
- 
- #[cfg(target_os = "macos")]
- #[link(name = "System")]
- extern {}
- 
-diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
-index 9b2b594..de72de2 100644
---- a/src/libstd/sys/common/net.rs
-+++ b/src/libstd/sys/common/net.rs
-@@ -641,24 +641,25 @@ impl TcpStream {
-         }
-     }
- 
-     #[cfg(any(target_os = "macos", target_os = "ios"))]
-     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
-         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
-                    seconds as libc::c_int)
-     }
--    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
-     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
-         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
-                    seconds as libc::c_int)
-     }
-     #[cfg(not(any(target_os = "macos",
-                   target_os = "ios",
-                   target_os = "freebsd",
-+                  target_os = "openbsd",
-                   target_os = "dragonfly")))]
-     fn set_tcp_keepalive(&mut self, _seconds: uint) -> IoResult<()> {
-         Ok(())
-     }
- 
-     #[cfg(target_os = "linux")]
-     fn lock_nonblocking(&self) {}
- 
 diff --git a/src/libstd/sys/unix/c.rs b/src/libstd/sys/unix/c.rs
-index e76f2a2..59d56d5 100644
+index a4ebcbd..2e53242 100644
 --- a/src/libstd/sys/unix/c.rs
 +++ b/src/libstd/sys/unix/c.rs
-@@ -18,46 +18,49 @@ pub use self::signal::{sigaction, siginfo, sigset_t};
+@@ -18,47 +18,50 @@ pub use self::signal::{sigaction, siginfo, sigset_t};
  pub use self::signal::{SA_ONSTACK, SA_RESTART, SA_RESETHAND, SA_NOCLDSTOP};
  pub use self::signal::{SA_NODEFER, SA_NOCLDWAIT, SA_SIGINFO, SIGCHLD};
  
@@ -1475,8 +1261,9 @@ index e76f2a2..59d56d5 100644
  #[cfg(any(target_os = "macos",
            target_os = "ios",
            target_os = "freebsd",
-+          target_os = "openbsd",
-           target_os = "dragonfly"))]
+-          target_os = "dragonfly"))]
++          target_os = "dragonfly",
++          target_os = "bitrig"))]
  pub const FIONBIO: libc::c_ulong = 0x8004667e;
  #[cfg(any(all(target_os = "linux",
                any(target_arch = "x86",
@@ -1491,8 +1278,9 @@ index e76f2a2..59d56d5 100644
  #[cfg(any(target_os = "macos",
            target_os = "ios",
            target_os = "freebsd",
-+          target_os = "openbsd",
-           target_os = "dragonfly"))]
+-          target_os = "dragonfly"))]
++          target_os = "dragonfly",
++          target_os = "bitrig"))]
  pub const FIOCLEX: libc::c_ulong = 0x20006601;
  #[cfg(any(all(target_os = "linux",
                any(target_arch = "x86",
@@ -1507,8 +1295,9 @@ index e76f2a2..59d56d5 100644
  #[cfg(any(target_os = "macos",
            target_os = "ios",
            target_os = "freebsd",
-+          target_os = "openbsd",
-           target_os = "dragonfly"))]
+-          target_os = "dragonfly"))]
++          target_os = "dragonfly",
++          target_os = "bitrig"))]
  pub const MSG_DONTWAIT: libc::c_int = 0x80;
  #[cfg(any(target_os = "linux", target_os = "android"))]
  pub const MSG_DONTWAIT: libc::c_int = 0x40;
@@ -1516,8 +1305,8 @@ index e76f2a2..59d56d5 100644
  pub const WNOHANG: libc::c_int = 1;
  
  extern {
-@@ -99,16 +102,17 @@ mod select {
- 
+     pub fn gettimeofday(timeval: *mut libc::timeval,
+@@ -100,16 +103,17 @@ mod select {
      pub fn fd_set(set: &mut fd_set, fd: i32) {
          set.fds_bits[(fd / 32) as uint] |= 1 << ((fd % 32) as uint);
      }
@@ -1525,8 +1314,8 @@ index e76f2a2..59d56d5 100644
  
  #[cfg(any(target_os = "android",
            target_os = "freebsd",
-+          target_os = "openbsd",
            target_os = "dragonfly",
++          target_os = "bitrig",
            target_os = "linux"))]
  mod select {
      use uint;
@@ -1534,62 +1323,157 @@ index e76f2a2..59d56d5 100644
  
      pub const FD_SETSIZE: uint = 1024;
  
-@@ -215,30 +219,31 @@ mod signal {
-     pub struct sigset_t {
-         __val: [libc::c_ulong, ..32],
+     #[repr(C)]
+@@ -261,8 +265,46 @@ mod signal {
+ 
+     #[repr(C)]
+     pub struct sigaction {
+         pub sa_handler: extern fn(libc::c_int),
+         pub sa_flags: libc::c_int,
+         pub sa_mask: sigset_t,
      }
  }
++
++#[cfg(target_os = "bitrig")]
++mod signal {
++    use libc;
++
++    pub const SA_ONSTACK: libc::c_int = 0x0001;
++    pub const SA_RESTART: libc::c_int = 0x0002;
++    pub const SA_RESETHAND: libc::c_int = 0x0004;
++    pub const SA_NOCLDSTOP: libc::c_int = 0x0008;
++    pub const SA_NODEFER: libc::c_int = 0x0010;
++    pub const SA_NOCLDWAIT: libc::c_int = 0x0020;
++    pub const SA_SIGINFO: libc::c_int = 0x0040;
++    pub const SIGCHLD: libc::c_int = 20;
++
++    pub type sigset_t = libc::c_uint;
++
++    // This structure has more fields, but we're not all that interested in
++    // them.
++    #[repr(C)]
++    pub struct siginfo {
++        pub si_signo: libc::c_int,
++        pub si_code: libc::c_int,
++        pub si_errno: libc::c_int,
++        // FIXME: Bitrig has a crazy union here in the siginfo, I think this 
++        // layout will still work tho.  The status might be off by the size of 
++        // a clock_t by my reading, but we can fix this later.
++        pub pid: libc::pid_t,
++        pub uid: libc::uid_t,
++        pub status: libc::c_int,
++    }
++
++    #[repr(C)]
++    pub struct sigaction {
++        pub sa_handler: extern fn(libc::c_int),
++        pub sa_mask: sigset_t,
++        pub sa_flags: libc::c_int,
++    }
++}
+diff --git a/src/libstd/sys/unix/fs.rs b/src/libstd/sys/unix/fs.rs
+index 98d860f..59be1d1 100644
+--- a/src/libstd/sys/unix/fs.rs
++++ b/src/libstd/sys/unix/fs.rs
+@@ -284,16 +284,43 @@ pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
+     let dst = dst.to_c_str();
+     mkerr_libc(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })
+ }
  
- #[cfg(any(target_os = "macos",
-           target_os = "ios",
-           target_os = "freebsd",
-+          target_os = "openbsd",
-           target_os = "dragonfly"))]
- mod signal {
-     use libc;
+ fn mkstat(stat: &libc::stat) -> FileStat {
+     // FileStat times are in milliseconds
+     fn mktime(secs: u64, nsecs: u64) -> u64 { secs * 1000 + nsecs / 1000000 }
  
-     pub const SA_ONSTACK: libc::c_int = 0x0001;
-     pub const SA_RESTART: libc::c_int = 0x0002;
-     pub const SA_RESETHAND: libc::c_int = 0x0004;
-     pub const SA_NOCLDSTOP: libc::c_int = 0x0008;
-     pub const SA_NODEFER: libc::c_int = 0x0010;
-     pub const SA_NOCLDWAIT: libc::c_int = 0x0020;
-     pub const SA_SIGINFO: libc::c_int = 0x0040;
-     pub const SIGCHLD: libc::c_int = 20;
++    #[cfg(target_os = "bitrig")]
++    fn ctime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_ctim.tv_sec as u64, stat.st_ctim.tv_nsec as u64)
++    }
++    #[cfg(not(target_os = "bitrig"))]
++    fn ctime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) 
++    }
++
++    #[cfg(target_os = "bitrig")]
++    fn atime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_atim.tv_sec as u64, stat.st_atim.tv_nsec as u64)
++    }
++    #[cfg(not(target_os = "bitrig"))]
++    fn atime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_atime as u64, stat.st_atime_nsec as u64)
++    }
++
++    #[cfg(target_os = "bitrig")]
++    fn mtime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_mtim.tv_sec as u64, stat.st_mtim.tv_nsec as u64)
++    }
++    #[cfg(not(target_os = "bitrig"))]
++    fn mtime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64)
++    }
++
+     #[cfg(not(any(target_os = "linux", target_os = "android")))]
+     fn flags(stat: &libc::stat) -> u64 { stat.st_flags as u64 }
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     fn flags(_stat: &libc::stat) -> u64 { 0 }
  
--    #[cfg(any(target_os = "macos", target_os = "ios"))]
-+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "openbsd"))]
-     pub type sigset_t = u32;
-     #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-     #[repr(C)]
-     pub struct sigset_t {
-         bits: [u32, ..4],
-     }
- 
-     // This structure has more fields, but we're not all that interested in
+     #[cfg(not(any(target_os = "linux", target_os = "android")))]
+     fn gen(stat: &libc::stat) -> u64 { stat.st_gen as u64 }
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+@@ -305,19 +332,19 @@ fn mkstat(stat: &libc::stat) -> FileStat {
+             libc::S_IFREG => io::FileType::RegularFile,
+             libc::S_IFDIR => io::FileType::Directory,
+             libc::S_IFIFO => io::FileType::NamedPipe,
+             libc::S_IFBLK => io::FileType::BlockSpecial,
+             libc::S_IFLNK => io::FileType::Symlink,
+             _ => io::FileType::Unknown,
+         },
+         perm: FilePermission::from_bits_truncate(stat.st_mode as u32),
+-        created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
+-        modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
+-        accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
++        created: ctime(stat),
++        modified: mtime(stat),
++        accessed: atime(stat),
+         unstable: UnstableFileStat {
+             device: stat.st_dev as u64,
+             inode: stat.st_ino as u64,
+             rdev: stat.st_rdev as u64,
+             nlink: stat.st_nlink as u64,
+             uid: stat.st_uid as u64,
+             gid: stat.st_gid as u64,
+             blksize: stat.st_blksize as u64,
 diff --git a/src/libstd/sys/unix/os.rs b/src/libstd/sys/unix/os.rs
-index 4e495f0..c6e5450 100644
+index cafe52f..7818b5d 100644
 --- a/src/libstd/sys/unix/os.rs
 +++ b/src/libstd/sys/unix/os.rs
-@@ -15,16 +15,17 @@ use io::IoResult;
- use sys::fs::FileDesc;
- 
- use os::TMPBUF_SZ;
- 
- /// Returns the platform-specific value of errno
- pub fn errno() -> int {
-     #[cfg(any(target_os = "macos",
-               target_os = "ios",
-+              target_os = "openbsd",
-               target_os = "freebsd"))]
-     fn errno_location() -> *const c_int {
+@@ -35,16 +35,26 @@ pub fn errno() -> int {
          extern {
              fn __error() -> *const c_int;
          }
          unsafe {
              __error()
          }
-@@ -56,16 +57,17 @@ pub fn errno() -> int {
+     }
+ 
++    #[cfg(target_os = "bitrig")]
++    fn errno_location() -> *const c_int {
++        extern {
++            fn __errno() -> *const c_int;
++        }
++        unsafe {
++            __errno()
++        }
++    }
++
+     #[cfg(target_os = "dragonfly")]
+     fn errno_location() -> *const c_int {
+         extern {
+             fn __dfly_error() -> *const c_int;
+         }
+         unsafe {
+             __dfly_error()
+         }
+@@ -66,17 +76,18 @@ pub fn errno() -> int {
  }
  
  /// Get a detailed string description for the given error number
@@ -1598,8 +1482,9 @@ index 4e495f0..c6e5450 100644
                target_os = "ios",
                target_os = "android",
                target_os = "freebsd",
-+              target_os = "openbsd",
-               target_os = "dragonfly"))]
+-              target_os = "dragonfly"))]
++              target_os = "dragonfly",
++              target_os = "bitrig"))]
      fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
                    -> c_int {
          extern {
@@ -1607,11 +1492,50 @@ index 4e495f0..c6e5450 100644
                            buflen: libc::size_t) -> c_int;
          }
          unsafe {
+             strerror_r(errnum, buf, buflen)
+@@ -203,16 +214,37 @@ pub fn load_self() -> Option<Vec<u8>> {
+     use std::io;
+ 
+     match io::fs::readlink(&Path::new("/proc/curproc/file")) {
+         Ok(path) => Some(path.into_vec()),
+         Err(..) => None
+     }
+ }
+ 
++#[cfg(target_os = "bitrig")]
++pub fn load_self() -> Option<Vec<u8>> {
++    unsafe {
++        use libc::funcs::bsd44::*;
++        use libc::consts::os::extra::*;
++        use iter::range;
++        let mut v: Vec<u8> = Vec::from_elem(PATH_MAX as uint, 0i as u8);
++        let args: Vec<Vec<u8>> = real_args_as_bytes();
++        let ref exe: Vec<u8> = args[0];
++        let err: int = realpath(exe.as_ptr() as *const c_char,
++                                v.as_mut_ptr() as *mut c_char);
++        if err == 0 { return None; }
++        let mut len = 0i;
++        for x in range(0i, PATH_MAX as int) {
++            if v[x as uint] != 0 { len += 1; }
++        }
++        v.set_len(len as uint);
++        Some(v)
++    }
++}
++
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub fn load_self() -> Option<Vec<u8>> {
+     use std::io;
+ 
+     match io::fs::readlink(&Path::new("/proc/self/exe")) {
+         Ok(path) => Some(path.into_vec()),
+         Err(..) => None
+     }
 diff --git a/src/libstd/sys/unix/process.rs b/src/libstd/sys/unix/process.rs
-index 81bc138..9a97019 100644
+index 835f427..73180b0 100644
 --- a/src/libstd/sys/unix/process.rs
 +++ b/src/libstd/sys/unix/process.rs
-@@ -568,16 +568,17 @@ fn translate_status(status: c_int) -> ProcessExit {
+@@ -597,17 +597,18 @@ fn translate_status(status: c_int) -> ProcessExit {
          pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
          pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
          pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
@@ -1620,8 +1544,9 @@ index 81bc138..9a97019 100644
      #[cfg(any(target_os = "macos",
                target_os = "ios",
                target_os = "freebsd",
-+              target_os = "openbsd",
-               target_os = "dragonfly"))]
+-              target_os = "dragonfly"))]
++              target_os = "dragonfly",
++              target_os = "bitrig"))]
      mod imp {
          pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
          pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
@@ -1629,30 +1554,55 @@ index 81bc138..9a97019 100644
      }
  
      if imp::WIFEXITED(status) {
+         ExitStatus(imp::WEXITSTATUS(status) as int)
+diff --git a/src/libstd/sys/unix/sync.rs b/src/libstd/sys/unix/sync.rs
+index 007826b..6fb3215 100644
+--- a/src/libstd/sys/unix/sync.rs
++++ b/src/libstd/sys/unix/sync.rs
+@@ -39,17 +39,19 @@ extern {
+     pub fn pthread_rwlock_destroy(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_rdlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_tryrdlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_wrlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_trywrlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_unlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+ }
+ 
+-#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
++#[cfg(any(target_os = "freebsd",
++          target_os = "dragonfly",
++          target_os = "bitrig"))]
+ mod os {
+     use libc;
+ 
+     pub type pthread_mutex_t = *mut libc::c_void;
+     pub type pthread_cond_t = *mut libc::c_void;
+     pub type pthread_rwlock_t = *mut libc::c_void;
+ 
+     pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = 0 as *mut _;
 diff --git a/src/libsyntax/abi.rs b/src/libsyntax/abi.rs
-index 87693f3..62a2414 100644
+index b1599cb..69fc4d1 100644
 --- a/src/libsyntax/abi.rs
 +++ b/src/libsyntax/abi.rs
-@@ -12,17 +12,17 @@ pub use self::Os::*;
- pub use self::Abi::*;
- pub use self::Architecture::*;
- pub use self::AbiArchitecture::*;
+@@ -19,16 +19,17 @@ use std::fmt;
+ pub enum Os {
+     OsWindows,
+     OsMacos,
+     OsLinux,
+     OsAndroid,
+     OsFreebsd,
+     OsiOS,
+     OsDragonfly,
++    OsBitrig,
+ }
  
- use std::fmt;
- 
- #[deriving(PartialEq)]
- pub enum Os { OsWindows, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsiOS,
--              OsDragonfly }
-+              OsDragonfly, OsOpenbsd }
- 
- #[deriving(PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
+ #[deriving(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy)]
  pub enum Abi {
      // NB: This ordering MUST match the AbiDatas array below.
      // (This is ensured by the test indices_are_correct().)
  
      // Single platform ABIs come first (`for_arch()` relies on this)
-     Cdecl,
-@@ -120,16 +120,17 @@ impl fmt::Show for Os {
+@@ -129,17 +130,18 @@ impl fmt::Show for Os {
      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
          match *self {
              OsLinux => "linux".fmt(f),
@@ -1661,8 +1611,9 @@ index 87693f3..62a2414 100644
              OsiOS => "ios".fmt(f),
              OsAndroid => "android".fmt(f),
              OsFreebsd => "freebsd".fmt(f),
-+            OsOpenbsd => "openbsd".fmt(f),
-             OsDragonfly => "dragonfly".fmt(f)
+-            OsDragonfly => "dragonfly".fmt(f)
++            OsDragonfly => "dragonfly".fmt(f),
++            OsBitrig => "bitrig".fmt(f)
          }
      }
  }
@@ -1670,65 +1621,22 @@ index 87693f3..62a2414 100644
  #[allow(non_snake_case)]
  #[test]
  fn lookup_Rust() {
-diff --git a/src/rt/arch/i386/morestack.S b/src/rt/arch/i386/morestack.S
-index 2f03251..312e1e8 100644
---- a/src/rt/arch/i386/morestack.S
-+++ b/src/rt/arch/i386/morestack.S
-@@ -68,30 +68,30 @@
- */
- 
- .text
- 
- #if defined(__APPLE__)
- #define MORESTACK               ___morestack
- #define EXHAUSTED               _rust_stack_exhausted
- #else
--#if defined(__linux__) || defined(__FreeBSD__)
-+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
- #define MORESTACK               __morestack
- #define EXHAUSTED               rust_stack_exhausted
- #else
- #define MORESTACK               ___morestack
- #define EXHAUSTED               _rust_stack_exhausted
- #endif
- #endif
- 
- .globl MORESTACK
- .globl EXHAUSTED
- 
- // FIXME: What about __WIN32__?
--#if defined(__linux__) || defined(__FreeBSD__)
-+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
- 	.hidden MORESTACK
- #else
- #if defined(__APPLE__)
- 	.private_extern MORESTACK
- #endif
- #endif
- 
- #ifdef __ELF__
+     let abi = lookup("Rust");
 diff --git a/src/rt/arch/x86_64/morestack.S b/src/rt/arch/x86_64/morestack.S
-index c82da57..7c814eb 100644
+index c82da57..04eabdc 100644
 --- a/src/rt/arch/x86_64/morestack.S
 +++ b/src/rt/arch/x86_64/morestack.S
-@@ -10,23 +10,23 @@
- #if defined(__APPLE__)
- #define MORESTACK               ___morestack
- #else
- #define MORESTACK               __morestack
- #endif
- 
+@@ -16,17 +16,17 @@
  #if defined(__APPLE__)
  #define EXHAUSTED               _rust_stack_exhausted
--#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
-+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
+ #elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
  #define EXHAUSTED               rust_stack_exhausted@PLT
  #else
  #define EXHAUSTED               rust_stack_exhausted
  #endif
  
 -#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
-+#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
++#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__Bitrig__)
  	.hidden MORESTACK
  #else
  #if defined(__APPLE__)
@@ -1738,7 +1646,7 @@ index c82da57..7c814eb 100644
  
  #ifdef __ELF__
 diff --git a/src/rt/rust_builtin.c b/src/rt/rust_builtin.c
-index 5dc07f8..c121712 100644
+index 5dc07f8..1f2ca35 100644
 --- a/src/rt/rust_builtin.c
 +++ b/src/rt/rust_builtin.c
 @@ -65,17 +65,17 @@ timegm(struct tm *tm)
@@ -1751,7 +1659,7 @@ index 5dc07f8..c121712 100644
  #endif
  
 -#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__)
-+#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__) || defined(__OpenBSD__)
++#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__) || (__Bitrig__)
  extern char **environ;
  #endif
  
@@ -1761,7 +1669,7 @@ index 5dc07f8..c121712 100644
      return 0;
  }
 diff --git a/src/test/run-pass/dupe-first-attr.rc b/src/test/run-pass/dupe-first-attr.rc
-index 30d6b93..e6d4ad9 100644
+index 30d6b93..eb66423 100644
 --- a/src/test/run-pass/dupe-first-attr.rc
 +++ b/src/test/run-pass/dupe-first-attr.rc
 @@ -21,12 +21,15 @@ mod hello;
@@ -1773,7 +1681,7 @@ index 30d6b93..e6d4ad9 100644
  #[cfg(target_os = "dragonfly")]
  mod hello;
  
-+#[cfg(target_os = "openbsd")]
++#[cfg(target_os = "bitrig")]
 +mod hello;
 +
  #[cfg(target_os = "android")]
@@ -1781,34 +1689,43 @@ index 30d6b93..e6d4ad9 100644
  
  pub fn main() { }
 diff --git a/src/test/run-pass/intrinsic-alignment.rs b/src/test/run-pass/intrinsic-alignment.rs
-index 6ab753d..96fd34f 100644
+index 6ab753d..52c3af2 100644
 --- a/src/test/run-pass/intrinsic-alignment.rs
 +++ b/src/test/run-pass/intrinsic-alignment.rs
-@@ -15,17 +15,18 @@ mod rusti {
-         pub fn pref_align_of<T>() -> uint;
-         pub fn min_align_of<T>() -> uint;
+@@ -36,16 +36,28 @@ mod m {
+     pub fn main() {
+         unsafe {
+             assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
+             assert_eq!(::rusti::min_align_of::<u64>(), 8u);
+         }
      }
  }
  
- #[cfg(any(target_os = "linux",
-           target_os = "macos",
-           target_os = "freebsd",
--          target_os = "dragonfly"))]
-+          target_os = "dragonfly",
-+          target_os = "openbsd"))]
++#[cfg(target_os = "bitrig")]
++mod m {
++    #[main]
++    #[cfg(target_arch = "x86_64")]
++    pub fn main() {
++        unsafe {
++            assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
++            assert_eq!(::rusti::min_align_of::<u64>(), 8u);
++        }
++    }
++}
++
+ #[cfg(target_os = "windows")]
  mod m {
      #[main]
      #[cfg(target_arch = "x86")]
      pub fn main() {
          unsafe {
              assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
-             assert_eq!(::rusti::min_align_of::<u64>(), 4u);
-         }
+             assert_eq!(::rusti::min_align_of::<u64>(), 8u);
 diff --git a/src/test/run-pass/lang-item-public.rs b/src/test/run-pass/lang-item-public.rs
-index 982d4f6..72662ec 100644
+index 81774c7..d4c85c4 100644
 --- a/src/test/run-pass/lang-item-public.rs
 +++ b/src/test/run-pass/lang-item-public.rs
-@@ -31,16 +31,20 @@ extern {}
+@@ -32,16 +32,20 @@ extern {}
  #[cfg(target_os = "freebsd")]
  #[link(name = "c")]
  extern {}
@@ -1817,7 +1734,7 @@ index 982d4f6..72662ec 100644
  #[link(name = "c")]
  extern {}
  
-+#[cfg(target_os = "openbsd")]
++#[cfg(target_os = "bitrig")]
 +#[link(name = "c")]
 +extern {}
 +
@@ -1830,7 +1747,7 @@ index 982d4f6..72662ec 100644
      1 % 1
  }
 diff --git a/src/test/run-pass/out-of-stack-new-thread-no-split.rs b/src/test/run-pass/out-of-stack-new-thread-no-split.rs
-index e4a4216..2b89ab4 100644
+index 674d0dc..53b20fb 100644
 --- a/src/test/run-pass/out-of-stack-new-thread-no-split.rs
 +++ b/src/test/run-pass/out-of-stack-new-thread-no-split.rs
 @@ -7,16 +7,17 @@
@@ -1842,7 +1759,7 @@ index e4a4216..2b89ab4 100644
  //ignore-freebsd
  //ignore-ios
  //ignore-dragonfly
-+//ignore-openbsd
++//ignore-bitrig
  
  #![feature(asm)]
  
@@ -1852,7 +1769,7 @@ index e4a4216..2b89ab4 100644
  // lifted from the test module
  // Inlining to avoid llvm turning the recursive functions into tail calls,
 diff --git a/src/test/run-pass/out-of-stack-no-split.rs b/src/test/run-pass/out-of-stack-no-split.rs
-index ecb93cc..2c594e0 100644
+index 7992677..5054dbb 100644
 --- a/src/test/run-pass/out-of-stack-no-split.rs
 +++ b/src/test/run-pass/out-of-stack-no-split.rs
 @@ -8,16 +8,17 @@
@@ -1864,7 +1781,7 @@ index ecb93cc..2c594e0 100644
  //ignore-freebsd
  //ignore-ios
  //ignore-dragonfly
-+//ignore-openbsd
++//ignore-bitrig
  
  #![feature(asm)]
  
@@ -1874,31 +1791,37 @@ index ecb93cc..2c594e0 100644
  // lifted from the test module
  // Inlining to avoid llvm turning the recursive functions into tail calls,
 diff --git a/src/test/run-pass/rec-align-u64.rs b/src/test/run-pass/rec-align-u64.rs
-index c0c7f4c..41fd8a3 100644
+index c0c7f4c..be33b9a 100644
 --- a/src/test/run-pass/rec-align-u64.rs
 +++ b/src/test/run-pass/rec-align-u64.rs
-@@ -34,17 +34,18 @@ struct Outer {
-     c8: u8,
-     t: Inner
+@@ -49,16 +49,25 @@ mod m {
+ 
+     #[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
+     pub mod m {
+         pub fn align() -> uint { 8u }
+         pub fn size() -> uint { 16u }
+     }
  }
  
- 
- #[cfg(any(target_os = "linux",
-           target_os = "macos",
-           target_os = "freebsd",
--          target_os = "dragonfly"))]
-+          target_os = "dragonfly",
-+          target_os = "openbsd"))]
++#[cfg(target_os = "bitrig")]
++mod m {
++    #[cfg(target_arch = "x86_64")]
++    pub mod m {
++        pub fn align() -> uint { 8u }
++        pub fn size() -> uint { 16u }
++    }
++}
++
+ #[cfg(target_os = "windows")]
  mod m {
      #[cfg(target_arch = "x86")]
      pub mod m {
-         pub fn align() -> uint { 4u }
-         pub fn size() -> uint { 12u }
+         pub fn align() -> uint { 8u }
+         pub fn size() -> uint { 16u }
      }
  
-     #[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
 diff --git a/src/test/run-pass/x86stdcall.rs b/src/test/run-pass/x86stdcall.rs
-index 15d1852..63d2fa9 100644
+index 15d1852..13cab11 100644
 --- a/src/test/run-pass/x86stdcall.rs
 +++ b/src/test/run-pass/x86stdcall.rs
 @@ -29,10 +29,11 @@ pub fn main() {
@@ -1910,6 +1833,6 @@ index 15d1852..63d2fa9 100644
            target_os = "linux",
            target_os = "freebsd",
            target_os = "dragonfly",
-+          target_os = "openbsd",
++          target_os = "bitrig",
            target_os = "android"))]
  pub fn main() { }
