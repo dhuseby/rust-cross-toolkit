@@ -28,7 +28,7 @@ patch_src(){
   echo "Patching ${TOP}/${1} with ${2}.patch"
   cd ${TOP}/${1}
   if [ ! -e .patched ]; then
-    patch -p1 < ${TOP}/../${2}.patch
+    patch -p1 < ${TOP}/../patches/${2}.patch
     date > .patched
   else
     echo "Rust already patched on:" `cat .patched`
@@ -144,6 +144,7 @@ linux(){
   patch_src rust rust
   patch_src rust/src/llvm llvm
   patch_src rust/src/jemalloc jemalloc
+  linux_build
 }
 
 bitrig(){
