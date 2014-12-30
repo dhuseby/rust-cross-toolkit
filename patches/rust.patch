@@ -732,7 +732,7 @@ index 322f001..1a986c9 100644
          },
  
 diff --git a/src/librustc_back/mipsel.rs b/src/librustc_back/mipsel.rs
-index e7ce5b0..9cd8674 100644
+index e7ce5b0..0b8ccc1 100644
 --- a/src/librustc_back/mipsel.rs
 +++ b/src/librustc_back/mipsel.rs
 @@ -51,17 +51,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -745,7 +745,7 @@ index e7ce5b0..9cd8674 100644
            }
  
 -          abi::OsFreebsd | abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::Bitrig => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
              "e-p:32:32:32\
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
@@ -904,7 +904,7 @@ index 0000000..bc4f8b6
 +    }
 +}
 diff --git a/src/librustc_back/x86.rs b/src/librustc_back/x86.rs
-index 21c4fd4..0aab47c 100644
+index 21c4fd4..f932946 100644
 --- a/src/librustc_back/x86.rs
 +++ b/src/librustc_back/x86.rs
 @@ -40,20 +40,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os)
@@ -920,7 +920,7 @@ index 21c4fd4..0aab47c 100644
 -            "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
 -          }
 -          abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::Bitrig => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
              "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
            }
  
@@ -930,7 +930,7 @@ index 21c4fd4..0aab47c 100644
  
          cc_args: vec!("-m32".to_string()),
 diff --git a/src/librustc_back/x86_64.rs b/src/librustc_back/x86_64.rs
-index 88cd674..fe65020 100644
+index 88cd674..1d73eed 100644
 --- a/src/librustc_back/x86_64.rs
 +++ b/src/librustc_back/x86_64.rs
 @@ -42,22 +42,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -948,7 +948,7 @@ index 88cd674..fe65020 100644
 -                s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
 -          }
 -          abi::OsDragonfly => {
-+          abi::OsFreebsd | abi::OsDragonfly | abi::Bitrig => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
              "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
                  f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
                  s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
