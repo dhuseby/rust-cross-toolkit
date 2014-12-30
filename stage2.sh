@@ -30,6 +30,7 @@ setup(){
   mkdir -p stage2
   cd stage2
   TOP=`pwd`
+  mkdir -p rust-libs
   RUST_PREFIX=${TOP}/../stage1/install
   RUST_SRC=${TOP}/rust
   RUSTC=${RUST_PREFIX}/bin/rustc
@@ -89,11 +90,13 @@ linux_build(){
       echo "skipping $lib"
     else
       echo "compiling $lib"
-      ${RUSTC} --target ${TARGET} ${RUST_FLAGS} --crate-type lib -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
+      LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
+        ${RUSTC} --target ${TARGET} ${RUST_FLAGS} --crate-type lib -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
     fi
   done
 
-  ${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
+  LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
+    ${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
 
   cd ${TOP}/..
   tar cvzf stage2.tgz stage2/*.o stage2/rust-libs
