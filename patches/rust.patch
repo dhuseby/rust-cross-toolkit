@@ -102,7 +102,7 @@ index a116cc3..f4050f7 100644
          }
      }
 diff --git a/src/doc/reference.md b/src/doc/reference.md
-index b71994c..0a0e4a2 100644
+index 94c76aa..eb0176c 100644
 --- a/src/doc/reference.md
 +++ b/src/doc/reference.md
 @@ -2143,17 +2143,18 @@ The following configurations must be defined by the implementation:
@@ -686,7 +686,7 @@ index 7dcdc08..40debb0 100644
  
  
 diff --git a/src/librustc_back/arm.rs b/src/librustc_back/arm.rs
-index ea4d5c8..077a856 100644
+index 7e28cd6..f97a188 100644
 --- a/src/librustc_back/arm.rs
 +++ b/src/librustc_back/arm.rs
 @@ -56,17 +56,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -695,7 +695,7 @@ index ea4d5c8..077a856 100644
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
                  -v64:64:64-v128:64:128\
-                 -a0:0:64-n32".to_string()
+                 -a:0:64-n32".to_string()
            }
  
 -          abi::OsFreebsd | abi::OsDragonfly => {
@@ -704,12 +704,12 @@ index ea4d5c8..077a856 100644
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
                  -v64:64:64-v128:64:128\
-                 -a0:0:64-n32".to_string()
+                 -a:0:64-n32".to_string()
            }
          },
  
 diff --git a/src/librustc_back/mips.rs b/src/librustc_back/mips.rs
-index 322f001..1a986c9 100644
+index bc77321..bb67b9f 100644
 --- a/src/librustc_back/mips.rs
 +++ b/src/librustc_back/mips.rs
 @@ -51,17 +51,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -718,7 +718,7 @@ index 322f001..1a986c9 100644
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
                  -v64:64:64-v128:64:128\
-                 -a0:0:64-n32".to_string()
+                 -a:0:64-n32".to_string()
            }
  
 -          abi::OsFreebsd | abi::OsDragonfly => {
@@ -727,12 +727,12 @@ index 322f001..1a986c9 100644
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
                  -v64:64:64-v128:64:128\
-                 -a0:0:64-n32".to_string()
+                 -a:0:64-n32".to_string()
            }
          },
  
 diff --git a/src/librustc_back/mipsel.rs b/src/librustc_back/mipsel.rs
-index e7ce5b0..0b8ccc1 100644
+index 3eea0a0..dc1e770 100644
 --- a/src/librustc_back/mipsel.rs
 +++ b/src/librustc_back/mipsel.rs
 @@ -51,17 +51,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -741,7 +741,7 @@ index e7ce5b0..0b8ccc1 100644
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
                  -v64:64:64-v128:64:128\
-                 -a0:0:64-n32".to_string()
+                 -a:0:64-n32".to_string()
            }
  
 -          abi::OsFreebsd | abi::OsDragonfly => {
@@ -750,7 +750,7 @@ index e7ce5b0..0b8ccc1 100644
                  -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                  -f32:32:32-f64:64:64\
                  -v64:64:64-v128:64:128\
-                 -a0:0:64-n32".to_string()
+                 -a:0:64-n32".to_string()
            }
          },
  
@@ -904,7 +904,7 @@ index 0000000..bc4f8b6
 +    }
 +}
 diff --git a/src/librustc_back/x86.rs b/src/librustc_back/x86.rs
-index 21c4fd4..f932946 100644
+index 52c0716..770a8e1 100644
 --- a/src/librustc_back/x86.rs
 +++ b/src/librustc_back/x86.rs
 @@ -40,20 +40,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os)
@@ -930,7 +930,7 @@ index 21c4fd4..f932946 100644
  
          cc_args: vec!("-m32".to_string()),
 diff --git a/src/librustc_back/x86_64.rs b/src/librustc_back/x86_64.rs
-index 88cd674..1d73eed 100644
+index cbb288a..dffbb96 100644
 --- a/src/librustc_back/x86_64.rs
 +++ b/src/librustc_back/x86_64.rs
 @@ -42,22 +42,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
@@ -938,19 +938,19 @@ index 88cd674..1d73eed 100644
            }
            abi::OsAndroid => {
              "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
-                 f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
+                 f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
                  s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
            }
  
 -          abi::OsFreebsd => {
 -            "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
--                f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
+-                f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
 -                s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
 -          }
 -          abi::OsDragonfly => {
 +          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
              "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
-                 f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
+                 f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
                  s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
            }
  
@@ -1024,10 +1024,10 @@ index 368abe7..51ff86a 100644
      use ptr;
  
 diff --git a/src/libstd/os.rs b/src/libstd/os.rs
-index ceb9a41..77cc0a8 100644
+index 989f44f..a2b9eb9 100644
 --- a/src/libstd/os.rs
 +++ b/src/libstd/os.rs
-@@ -692,17 +692,18 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+@@ -693,17 +693,18 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
      }
  
      res
@@ -1047,7 +1047,7 @@ index ceb9a41..77cc0a8 100644
  #[cfg(not(windows))]
  fn real_args() -> Vec<String> {
      real_args_as_bytes().into_iter()
-@@ -1330,16 +1331,47 @@ pub mod consts {
+@@ -1331,16 +1332,47 @@ pub mod consts {
      /// platform: in this case, the empty string.
      pub const EXE_SUFFIX: &'static str = "";
  
@@ -1168,7 +1168,7 @@ index 862808a..6814806 100644
  
  #[cfg(target_os = "ios")]
 diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
-index 382f687..8cebd7d 100644
+index 7a09137..72820201 100644
 --- a/src/libstd/sys/common/net.rs
 +++ b/src/libstd/sys/common/net.rs
 @@ -644,25 +644,28 @@ impl TcpStream {
