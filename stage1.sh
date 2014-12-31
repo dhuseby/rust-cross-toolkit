@@ -35,7 +35,7 @@ patch_src(){
   fi
 }
 
-linux_build(){
+linux_configure(){
   export CC="/usr/bin/clang"
   export CXX="/usr/bin/clang++"
   export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O0 -fomit-frame-pointer -fPIC"
@@ -45,6 +45,9 @@ linux_build(){
   # compile rust
   cd ${TOP}/rust
   ./configure --disable-docs --enable-clang --prefix=${TOP}/install
+}
+
+linux_build(){
   ${MAKE} VERBOSE=1
   ${MAKE} install
 }
@@ -143,6 +146,12 @@ bitrig_build(){
 linux(){
   setup
   clone
+  # patch before configure so we can configure for bitrig
+  patch_src rust rust
+  patch_src rust/src/llvm llvm
+  patch_src rust/src/jemalloc jemalloc
+  linux_configure
+  # patch again because rust ./configure resets submodules
   patch_src rust rust
   patch_src rust/src/llvm llvm
   patch_src rust/src/jemalloc jemalloc
