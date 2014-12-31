@@ -39,7 +39,7 @@ export LD_LIBRARY_PATH=${RUST_PREFIX}/lib
 
 if [ ! -e rust ]; then
   # clone everything
-  git clone --reference ${TOP}/../stage1-linux/rust https://github.com/dhuseby/rust.git
+  git clone --reference ${TOP}/../stage1-linux/rust https://github.com/rust-lang/rust.git
   cd rust
   git submodule init
   git submodule update
@@ -51,7 +51,23 @@ else
   rm -rf ${RS_LIB_DIR}/*
 fi
 
+patch_src(){
+  echo "Patching ${TOP}/${1} with ${2}.patch"
+  cd ${TOP}/${1}
+  if [ ! -e .patched ]; then
+    patch -p1 < ${TOP}/../patches/${2}.patch
+    date > .patched
+  else
+    echo "Rust already patched on:" `cat .patched`
+  fi
+}
+
+cd ${TOP}
+patch_src rust rust
+patch_src rust/src/llvm llvm
+patch_src rust/src/jemalloc jemalloc
 cp ${TOP}/../stage1-bitrig/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
+cd ${TOP}/rust
 
 export CC="/usr/bin/clang"
 export CXX="/usr/bin/clang++"
