@@ -62,7 +62,7 @@ bitrig_build(){
   export CC="/usr/bin/clang"
   export CXX="/usr/bin/clang++"
 
-  LLVM_INSTALL="/usr/local"
+  LLVM_INSTALL=${TOP}/install
   TARGET=${TOP}/libs
   LLVM_TARGET=${TARGET}/llvm
 
