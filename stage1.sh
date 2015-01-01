@@ -31,7 +31,7 @@ patch_src(){
     patch -p1 < ${TOP}/../patches/${2}.patch
     date > .patched
   else
-    echo "Rust already patched on:" `cat .patched`
+    echo "${1} already patched on:" `cat .patched`
   fi
 }
 
@@ -48,6 +48,7 @@ linux_configure(){
 }
 
 linux_build(){
+  cd ${TOP}/rust
   ${MAKE} VERBOSE=1
   ${MAKE} install
 }
