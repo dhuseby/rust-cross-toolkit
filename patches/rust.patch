@@ -812,7 +812,7 @@ index 0000000..83626e3
 +    }
 +}
 diff --git a/src/librustc_back/target/mod.rs b/src/librustc_back/target/mod.rs
-index 99a25be..2ee0fb8 100644
+index fdc9b72..20261ff 100644
 --- a/src/librustc_back/target/mod.rs
 +++ b/src/librustc_back/target/mod.rs
 @@ -50,32 +50,34 @@ use syntax::{diagnostic, abi};
@@ -1024,10 +1024,10 @@ index 368abe7..51ff86a 100644
      use ptr;
  
 diff --git a/src/libstd/os.rs b/src/libstd/os.rs
-index 989f44f..a2b9eb9 100644
+index df50b7f..0f84a34 100644
 --- a/src/libstd/os.rs
 +++ b/src/libstd/os.rs
-@@ -693,17 +693,18 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+@@ -694,17 +694,18 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
      }
  
      res
@@ -1047,7 +1047,7 @@ index 989f44f..a2b9eb9 100644
  #[cfg(not(windows))]
  fn real_args() -> Vec<String> {
      real_args_as_bytes().into_iter()
-@@ -1331,16 +1332,47 @@ pub mod consts {
+@@ -1333,16 +1334,47 @@ pub mod consts {
      /// platform: in this case, the empty string.
      pub const EXE_SUFFIX: &'static str = "";
  
@@ -1096,7 +1096,7 @@ index 989f44f..a2b9eb9 100644
      /// A string describing the specific operating system in use: in this
      /// case, `android`.
 diff --git a/src/libstd/rt/args.rs b/src/libstd/rt/args.rs
-index b1f2685..e962075 100644
+index 98eff62..43c9c24 100644
 --- a/src/libstd/rt/args.rs
 +++ b/src/libstd/rt/args.rs
 @@ -37,17 +37,18 @@ pub fn take() -> Option<Vec<Vec<u8>>> { imp::take() }
@@ -1168,10 +1168,10 @@ index 862808a..6814806 100644
  
  #[cfg(target_os = "ios")]
 diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
-index 7a09137..72820201 100644
+index 87ec20f..eedacf7 100644
 --- a/src/libstd/sys/common/net.rs
 +++ b/src/libstd/sys/common/net.rs
-@@ -644,25 +644,28 @@ impl TcpStream {
+@@ -682,25 +682,28 @@ impl TcpStream {
          }
      }
  
@@ -1249,7 +1249,7 @@ index 2a88e20..ddc14e4 100644
  
      // x86
 diff --git a/src/libstd/sys/unix/c.rs b/src/libstd/sys/unix/c.rs
-index a4ebcbd..2e53242 100644
+index 208dc60..9166003 100644
 --- a/src/libstd/sys/unix/c.rs
 +++ b/src/libstd/sys/unix/c.rs
 @@ -18,47 +18,50 @@ pub use self::signal::{sigaction, siginfo, sigset_t};
@@ -1443,7 +1443,7 @@ index 98d860f..59be1d1 100644
              gid: stat.st_gid as u64,
              blksize: stat.st_blksize as u64,
 diff --git a/src/libstd/sys/unix/os.rs b/src/libstd/sys/unix/os.rs
-index cafe52f..7818b5d 100644
+index cafe52f..693b40c 100644
 --- a/src/libstd/sys/unix/os.rs
 +++ b/src/libstd/sys/unix/os.rs
 @@ -35,16 +35,26 @@ pub fn errno() -> int {
@@ -1493,7 +1493,7 @@ index cafe52f..7818b5d 100644
          }
          unsafe {
              strerror_r(errnum, buf, buflen)
-@@ -203,16 +214,37 @@ pub fn load_self() -> Option<Vec<u8>> {
+@@ -203,16 +214,38 @@ pub fn load_self() -> Option<Vec<u8>> {
      use std::io;
  
      match io::fs::readlink(&Path::new("/proc/curproc/file")) {
@@ -1508,11 +1508,12 @@ index cafe52f..7818b5d 100644
 +        use libc::funcs::bsd44::*;
 +        use libc::consts::os::extra::*;
 +        use iter::range;
++        use rt;
 +        let mut v: Vec<u8> = Vec::from_elem(PATH_MAX as uint, 0i as u8);
-+        let args: Vec<Vec<u8>> = real_args_as_bytes();
++        let args: Vec<Vec<u8>> = rt::args::clone().unwrap_or_else(|| vec![]);
 +        let ref exe: Vec<u8> = args[0];
 +        let err: int = realpath(exe.as_ptr() as *const c_char,
-+                                v.as_mut_ptr() as *mut c_char);
++                                v.as_mut_ptr() as *mut c_char) as int;
 +        if err == 0 { return None; }
 +        let mut len = 0i;
 +        for x in range(0i, PATH_MAX as int) {
@@ -1532,7 +1533,7 @@ index cafe52f..7818b5d 100644
          Err(..) => None
      }
 diff --git a/src/libstd/sys/unix/process.rs b/src/libstd/sys/unix/process.rs
-index 835f427..73180b0 100644
+index 615e3a2..c3c3129 100644
 --- a/src/libstd/sys/unix/process.rs
 +++ b/src/libstd/sys/unix/process.rs
 @@ -597,17 +597,18 @@ fn translate_status(status: c_int) -> ProcessExit {
