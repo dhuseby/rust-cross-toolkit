@@ -130,7 +130,7 @@ index a116cc3..f4050f7 100644
          }
      }
 diff --git a/src/doc/reference.md b/src/doc/reference.md
-index 94c76aa..eb0176c 100644
+index f3ad19b..6c4c06d 100644
 --- a/src/doc/reference.md
 +++ b/src/doc/reference.md
 @@ -2143,17 +2143,18 @@ The following configurations must be defined by the implementation:
@@ -223,7 +223,7 @@ index 9503ec8..eaef55a 100644
  	    continue
  	    ;;
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index 7dcdc08..40debb0 100644
+index 9faaedc..f69d824 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
 @@ -277,30 +277,31 @@ pub use funcs::bsd43::{shutdown};
@@ -1148,7 +1148,7 @@ index 98eff62..43c9c24 100644
      use sync::{StaticMutex, MUTEX_INIT};
  
 diff --git a/src/libstd/rt/libunwind.rs b/src/libstd/rt/libunwind.rs
-index 2feea7f..a40c779 100644
+index 4dbe878..7b0719d 100644
 --- a/src/libstd/rt/libunwind.rs
 +++ b/src/libstd/rt/libunwind.rs
 @@ -98,16 +98,20 @@ extern {}
@@ -1196,7 +1196,7 @@ index 862808a..6814806 100644
  
  #[cfg(target_os = "ios")]
 diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
-index 87ec20f..eedacf7 100644
+index 259c15b..c7079af 100644
 --- a/src/libstd/sys/common/net.rs
 +++ b/src/libstd/sys/common/net.rs
 @@ -682,25 +682,28 @@ impl TcpStream {
@@ -1277,7 +1277,7 @@ index 2a88e20..ddc14e4 100644
  
      // x86
 diff --git a/src/libstd/sys/unix/c.rs b/src/libstd/sys/unix/c.rs
-index 208dc60..9166003 100644
+index 1bb8ed7..62aacf1 100644
 --- a/src/libstd/sys/unix/c.rs
 +++ b/src/libstd/sys/unix/c.rs
 @@ -18,47 +18,50 @@ pub use self::signal::{sigaction, siginfo, sigset_t};
@@ -1400,7 +1400,7 @@ index 208dc60..9166003 100644
 +    }
 +}
 diff --git a/src/libstd/sys/unix/fs.rs b/src/libstd/sys/unix/fs.rs
-index 98d860f..59be1d1 100644
+index 8de4ffa..4517f7b 100644
 --- a/src/libstd/sys/unix/fs.rs
 +++ b/src/libstd/sys/unix/fs.rs
 @@ -284,16 +284,43 @@ pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
@@ -1471,7 +1471,7 @@ index 98d860f..59be1d1 100644
              gid: stat.st_gid as u64,
              blksize: stat.st_blksize as u64,
 diff --git a/src/libstd/sys/unix/os.rs b/src/libstd/sys/unix/os.rs
-index cafe52f..693b40c 100644
+index 595191d..17a6962 100644
 --- a/src/libstd/sys/unix/os.rs
 +++ b/src/libstd/sys/unix/os.rs
 @@ -35,16 +35,26 @@ pub fn errno() -> int {
@@ -1561,7 +1561,7 @@ index cafe52f..693b40c 100644
          Err(..) => None
      }
 diff --git a/src/libstd/sys/unix/process.rs b/src/libstd/sys/unix/process.rs
-index 615e3a2..c3c3129 100644
+index c1c28bd..d617b09 100644
 --- a/src/libstd/sys/unix/process.rs
 +++ b/src/libstd/sys/unix/process.rs
 @@ -597,17 +597,18 @@ fn translate_status(status: c_int) -> ProcessExit {
@@ -1585,7 +1585,7 @@ index 615e3a2..c3c3129 100644
      if imp::WIFEXITED(status) {
          ExitStatus(imp::WEXITSTATUS(status) as int)
 diff --git a/src/libstd/sys/unix/sync.rs b/src/libstd/sys/unix/sync.rs
-index 007826b..6fb3215 100644
+index 77c5582..a26a119 100644
 --- a/src/libstd/sys/unix/sync.rs
 +++ b/src/libstd/sys/unix/sync.rs
 @@ -39,17 +39,19 @@ extern {
@@ -1609,6 +1609,30 @@ index 007826b..6fb3215 100644
      pub type pthread_rwlock_t = *mut libc::c_void;
  
      pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = 0 as *mut _;
+diff --git a/src/libstd/time/mod.rs b/src/libstd/time/mod.rs
+index 7bc1579..8befec6 100644
+--- a/src/libstd/time/mod.rs
++++ b/src/libstd/time/mod.rs
+@@ -63,17 +63,18 @@ fn precise_time_ns() -> u64 {
+     }
+ }
+ 
+ #[cfg(all(unix, not(target_os = "macos"), not(target_os = "ios")))]
+ mod imp {
+     use libc::{c_int, timespec};
+ 
+     // Apparently android provides this in some other library?
+-    #[cfg(not(target_os = "android"))]
++    // Bitrig's RT extensions are in the C library, not a separate librt
++    #[cfg(not(any(target_os = "android", target_os = "bitrig")))]
+     #[link(name = "rt")]
+     extern {}
+ 
+     extern {
+         pub fn clock_gettime(clk_id: c_int, tp: *mut timespec) -> c_int;
+     }
+ 
+ }
 diff --git a/src/libsyntax/abi.rs b/src/libsyntax/abi.rs
 index b1599cb..69fc4d1 100644
 --- a/src/libsyntax/abi.rs
@@ -1820,7 +1844,7 @@ index 7992677..5054dbb 100644
  // lifted from the test module
  // Inlining to avoid llvm turning the recursive functions into tail calls,
 diff --git a/src/test/run-pass/rec-align-u64.rs b/src/test/run-pass/rec-align-u64.rs
-index c0c7f4c..be33b9a 100644
+index 26ec597..0e1473d 100644
 --- a/src/test/run-pass/rec-align-u64.rs
 +++ b/src/test/run-pass/rec-align-u64.rs
 @@ -49,16 +49,25 @@ mod m {

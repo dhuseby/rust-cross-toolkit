@@ -48,10 +48,9 @@ clone(){
   else
     # update everything
     cd ${TOP}/rust
-    git pull origin
-    git submodule update --merge
+    #git pull origin
+    #git submodule update --merge
   fi
-  #cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
 }
 
 patch_src(){
@@ -66,11 +65,11 @@ patch_src(){
 }
 
 bitrig_configure(){
-  export CC="/usr/bin/clang"
-  export CXX="/usr/bin/clang++"
-  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O0 -fomit-frame-pointer -fPIC"
-  export CXXFLAGS="-std=c++11 -stdlib=libc++ -mstackrealign -I/usr/include/c++/v1/ -I/usr/include/libcxxabi -I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O0 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual -v"
-  export LDFLAGS="-g -stdlib=libc++ -L/usr/lib/llvm-3.4/lib -L/usr/lib/x86_64-linux-gnu/ -L/lib64 -L/lib -L/usr/lib -lc++ -lc++abi -lunwind -lc -lpthread -lffi -ltinfo -ldl -lm"
+  #export CC="/usr/bin/clang"
+  #export CXX="/usr/bin/clang++"
+  #export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O0 -fomit-frame-pointer -fPIC"
+  #export CXXFLAGS="-std=c++11 -stdlib=libc++ -mstackrealign -I/usr/include/c++/v1/ -I/usr/include/libcxxabi -I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O0 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual -v"
+  #export LDFLAGS="-g -stdlib=libc++ -L/usr/lib/llvm-3.4/lib -L/usr/lib/x86_64-linux-gnu/ -L/lib64 -L/lib -L/usr/lib -lc++ -lc++abi -lunwind -lc -lpthread -lffi -ltinfo -ldl -lm"
   PREFIX="/usr/local"
 
   # configure rust
@@ -96,6 +95,8 @@ bitrig(){
   patch_src rust rust
   patch_src rust/src/llvm llvm
   patch_src rust/src/jemalloc jemalloc
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
+  cp ${TOP}/../stage1/llvmdps.rs ${TOP}/rust/x86_64-unknown-bitrig/rt/llvmdeps.rs
   bitrig_build
 }
 
