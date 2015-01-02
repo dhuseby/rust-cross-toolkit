@@ -223,7 +223,7 @@ index 9503ec8..eaef55a 100644
  	    continue
  	    ;;
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index 9faaedc..f69d824 100644
+index 9faaedc..e977373 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
 @@ -277,30 +277,31 @@ pub use funcs::bsd43::{shutdown};
@@ -324,15 +324,15 @@ index 9faaedc..f69d824 100644
 +                #[deriving(Copy)] pub struct sockaddr {
 +                    pub sa_len: u8,
 +                    pub sa_family: sa_family_t,
-+                    pub sa_data: [u8, ..14],
++                    pub sa_data: [u8; 14],
 +                }
 +                #[repr(C)]
 +                #[deriving(Copy)] pub struct sockaddr_storage {
 +                    pub ss_len: u8,
 +                    pub ss_family: sa_family_t,
-+                    pub __ss_pad1: [u8, ..6],
++                    pub __ss_pad1: [u8; 6],
 +                    pub __ss_align: i64,
-+                    pub __ss_pad2: [u8, ..112],
++                    pub __ss_pad2: [u8; 112],
 +                }
 +                #[repr(C)]
 +                #[deriving(Copy)] pub struct sockaddr_in {
@@ -340,7 +340,7 @@ index 9faaedc..f69d824 100644
 +                    pub sin_family: sa_family_t,
 +                    pub sin_port: in_port_t,
 +                    pub sin_addr: in_addr,
-+                    pub sin_zero: [u8, ..8],
++                    pub sin_zero: [u8; 8],
 +                }
 +                #[repr(C)]
 +                #[deriving(Copy)] pub struct in_addr {
@@ -357,7 +357,7 @@ index 9faaedc..f69d824 100644
 +                }
 +                #[repr(C)]
 +                #[deriving(Copy)] pub struct in6_addr {
-+                    pub s6_addr: [u16, ..8]
++                    pub s6_addr: [u16; 8]
 +                }
 +                #[repr(C)]
 +                #[deriving(Copy)] pub struct ip_mreq {
@@ -384,7 +384,7 @@ index 9faaedc..f69d824 100644
 +                #[deriving(Copy)] pub struct sockaddr_un {
 +                    pub sun_len: u8,
 +                    pub sun_family: sa_family_t,
-+                    pub sun_path: [c_char, ..104]
++                    pub sun_path: [c_char; 104]
 +                }
 +                #[repr(C)]
 +                #[deriving(Copy)] pub struct ifaddrs {
