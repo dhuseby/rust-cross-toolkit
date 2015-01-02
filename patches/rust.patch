@@ -1,5 +1,5 @@
 diff --git a/configure b/configure
-index f14009b..e468727 100755
+index f14009b..46a553c 100755
 --- a/configure
 +++ b/configure
 @@ -368,16 +368,20 @@ case $CFG_OSTYPE in
@@ -47,6 +47,34 @@ index f14009b..e468727 100755
  # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
  # system, so if we find that gcc is clang, we should just use clang directly.
  if [ $CFG_OSTYPE = apple-darwin -a -z "$CFG_ENABLE_CLANG" ]
+@@ -1089,21 +1100,22 @@ then
+     "${CFG_GIT}" submodule update --recursive
+     need_ok "git failed"
+ 
+     # NB: this is just for the sake of getting the submodule SHA1 values
+     # and status written into the build log.
+     msg "git: submodule status"
+     "${CFG_GIT}" submodule status --recursive
+ 
+-    msg "git: submodule clobber"
+-    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
+-    need_ok "git failed"
+-    "${CFG_GIT}" submodule foreach --recursive git checkout .
+-    need_ok "git failed"
++    # don't clobber so that our patches won't get removed
++    #msg "git: submodule clobber"
++    #"${CFG_GIT}" submodule foreach --recursive git clean -dxf
++    #need_ok "git failed"
++    #"${CFG_GIT}" submodule foreach --recursive git checkout .
++    #need_ok "git failed"
+ 
+     cd ${CFG_BUILD_DIR}
+ fi
+ 
+ # Configure llvm, only if necessary
+ step_msg "looking at LLVM"
+ CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
+ for t in $CFG_HOST
 diff --git a/mk/cfg/x86_64-unknown-bitrig.mk b/mk/cfg/x86_64-unknown-bitrig.mk
 new file mode 100644
 index 0000000..bb6c9ae
