@@ -77,7 +77,7 @@ index f14009b..46a553c 100755
  for t in $CFG_HOST
 diff --git a/mk/cfg/x86_64-unknown-bitrig.mk b/mk/cfg/x86_64-unknown-bitrig.mk
 new file mode 100644
-index 0000000..bb6c9ae
+index 0000000..e2e5396
 --- /dev/null
 +++ b/mk/cfg/x86_64-unknown-bitrig.mk
 @@ -0,0 +1,26 @@
@@ -92,9 +92,9 @@ index 0000000..bb6c9ae
 +CFG_LIB_DSYM_GLOB_x86_64-unknown-bitrig=$(1)-*.dylib.dSYM
 +CFG_JEMALLOC_CFLAGS_x86_64-unknown-bitrig := -I/usr/include -I/usr/local/include $(CFLAGS)
 +CFG_GCCISH_CFLAGS_x86_64-unknown-bitrig := -Wall -Werror -g -fPIC -I/usr/include -I/usr/local/include $(CFLAGS)
-+CFG_GCCISH_LINK_FLAGS_x86_64-unknown-bitrig := -shared -fPIC -g -pthread
++CFG_GCCISH_LINK_FLAGS_x86_64-unknown-bitrig := -shared -fPIC -g -pthread $(LDFLAGS)
 +CFG_GCCISH_DEF_FLAG_x86_64-unknown-bitrig := -Wl,--export-dynamic,--dynamic-list=
-+CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-whole-archive
++CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-pic -Wl,-whole-archive
 +CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-no-whole-archive
 +CFG_DEF_SUFFIX_x86_64-unknown-bitrig := .bsd.def
 +CFG_LLC_FLAGS_x86_64-unknown-bitrig :=
@@ -107,6 +107,40 @@ index 0000000..bb6c9ae
 +CFG_RUN_x86_64-unknown-bitrig=$(2)
 +CFG_RUN_TARG_x86_64-unknown-bitrig=$(call CFG_RUN_x86_64-unknown-bitrig,,$(2))
 +CFG_GNU_TRIPLE_x86_64-unknown-bitrig := x86_64-unknown-bitrig
+diff --git a/mk/platform.mk b/mk/platform.mk
+index 7ca2473..5d98fb1 100644
+--- a/mk/platform.mk
++++ b/mk/platform.mk
+@@ -174,21 +174,29 @@ define CFG_MAKE_TOOLCHAIN
+   CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
+         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
+         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
+         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
+         $$(call CFG_INSTALL_NAME_$(1),$$(4))
+ 
+   ifeq ($$(findstring $(HOST_$(1)),arm mips mipsel),)
+ 
++	# On Bitrig, we need the relocation model to be PIC for everthing
++  ifeq (,$(filter $(OSTYPE_$(1)),bitrig))
++		LLVM_MC_RELOCATION_MODEL="pic"
++	else
++		LLVM_MC_RELOCATION_MODEL="default"
++	endif
++
+   # We're using llvm-mc as our assembler because it supports
+   # .cfi pseudo-ops on mac
+   CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
+                     $$(LLVM_MC_$$(CFG_BUILD)) \
+                     -assemble \
++										-relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
+                     -filetype=obj \
+                     -triple=$(1) \
+                     -o=$$(1)
+   else
+ 
+   # For the ARM and MIPS crosses, use the toolchain assembler
+   # FIXME: We should be able to use the LLVM assembler
+   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
 diff --git a/src/compiletest/util.rs b/src/compiletest/util.rs
 index a116cc3..f4050f7 100644
 --- a/src/compiletest/util.rs

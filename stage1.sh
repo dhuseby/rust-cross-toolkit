@@ -76,7 +76,7 @@ bitrig_build(){
   mkdir -p llvm-build
   cd llvm-build
   ../llvm/configure --prefix=${LLVM_INSTALL}
-  ${MAKE} VERBOSE=1
+  ${MAKE} -j9 VERBOSE=1
   ${MAKE} VERBOSE=1 install
 
   # copy the llvm lib files to the LLVM TARGET

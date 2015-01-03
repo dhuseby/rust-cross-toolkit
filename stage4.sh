@@ -96,7 +96,7 @@ bitrig(){
   patch_src rust/src/llvm llvm
   patch_src rust/src/jemalloc jemalloc
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
-  cp ${TOP}/../stage1/llvmdps.rs ${TOP}/rust/x86_64-unknown-bitrig/rt/llvmdeps.rs
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-bitrig/rt/llvmdeps.rs
   bitrig_build
 }
 
