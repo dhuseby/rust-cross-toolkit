@@ -53,20 +53,7 @@ linux_build(){
   ${MAKE} install
 }
 
-bitrig_build(){
-  if [ `machine -a` != "amd64" ]; then
-    echo "Rust only supports Bitrig amd64 right now!"
-    exit 1
-  fi
-
-  export AUTOCONF_VERSION=2.68
-  export CC="/usr/bin/clang"
-  export CXX="/usr/bin/clang++"
-
-  LLVM_INSTALL=${TOP}/install
-  TARGET=${TOP}/libs
-  LLVM_TARGET=${TARGET}/llvm
-
+bitrig_build_llvm(){
   mkdir -p ${LLVM_INSTALL}
   mkdir -p ${TARGET}
   mkdir -p ${LLVM_TARGET}
@@ -81,11 +68,13 @@ bitrig_build(){
 
   # copy the llvm lib files to the LLVM TARGET
   cp `${LLVM_INSTALL}/bin/llvm-config --libfiles` ${LLVM_TARGET}
+}
 
+bitrig_build_rust_parts(){
   # build the rustllvm pieces
   cd ${TOP}/rust/src/rustllvm
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
+  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -Wl,-pic PassWrapper.cpp
+  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -Wl,-pic RustWrapper.cpp
   ar rcs librustllvm.a PassWrapper.o RustWrapper.o	
   cp librustllvm.a ${TARGET}
 
@@ -107,8 +96,8 @@ bitrig_build(){
 
   cd ${TOP}/rust/src/rt
   ${LLVM_INSTALL}/bin/llc rust_try.ll
-  ${CC} -c -o rust_try.o rust_try.s
-  ${CC} -c -o record_sp.o arch/x86_64/record_sp.S
+  ${CC} -c -relocation-model=pic -o rust_try.o rust_try.s
+  ${CC} -c -relocation-model=pic -o record_sp.o arch/x86_64/record_sp.S
   ar rcs ${TARGET}/librustrt_native.a rust_try.o record_sp.o
 
   #cd ${TOP}/rust/src/rt
@@ -116,20 +105,38 @@ bitrig_build(){
   #ar rcs ${TARGET}/libcontext_switch.a context.o
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -o rust_builtin.o rust_builtin.c
+  ${CC} -c -Wl,-pic -o rust_builtin.o rust_builtin.c
   ar rcs ${TARGET}/librust_builtin.a rust_builtin.o 
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -o morestack.o arch/x86_64/morestack.S
+  ${CC} -c -relocation-model=pic -o morestack.o arch/x86_64/morestack.S
   ar rcs ${TARGET}/libmorestack.a morestack.o
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -o miniz.o miniz.c
+  ${CC} -c -Wl,-pic -o miniz.o miniz.c
   ar rcs ${TARGET}/libminiz.a miniz.o 
 
   cd ${TOP}/rust/src/rt/hoedown
   ${MAKE} VERBOSE=1 libhoedown.a 
   cp libhoedown.a ${TARGET}
+}
+
+bitrig_build(){
+  if [ `machine -a` != "amd64" ]; then
+    echo "Rust only supports Bitrig amd64 right now!"
+    exit 1
+  fi
+
+  export AUTOCONF_VERSION=2.68
+  export CC="/usr/bin/clang"
+  export CXX="/usr/bin/clang++"
+
+  LLVM_INSTALL=${TOP}/install
+  TARGET=${TOP}/libs
+  LLVM_TARGET=${TARGET}/llvm
+
+  bitrig_build_llvm
+  bitrig_build_rust_parts
 
   # Copy Bitrig system libraries
   mkdir -p ${TARGET}/usr/lib

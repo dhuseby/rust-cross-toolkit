@@ -77,7 +77,7 @@ index f14009b..46a553c 100755
  for t in $CFG_HOST
 diff --git a/mk/cfg/x86_64-unknown-bitrig.mk b/mk/cfg/x86_64-unknown-bitrig.mk
 new file mode 100644
-index 0000000..e2e5396
+index 0000000..75a5a9d
 --- /dev/null
 +++ b/mk/cfg/x86_64-unknown-bitrig.mk
 @@ -0,0 +1,26 @@
@@ -92,7 +92,7 @@ index 0000000..e2e5396
 +CFG_LIB_DSYM_GLOB_x86_64-unknown-bitrig=$(1)-*.dylib.dSYM
 +CFG_JEMALLOC_CFLAGS_x86_64-unknown-bitrig := -I/usr/include -I/usr/local/include $(CFLAGS)
 +CFG_GCCISH_CFLAGS_x86_64-unknown-bitrig := -Wall -Werror -g -fPIC -I/usr/include -I/usr/local/include $(CFLAGS)
-+CFG_GCCISH_LINK_FLAGS_x86_64-unknown-bitrig := -shared -fPIC -g -pthread $(LDFLAGS)
++CFG_GCCISH_LINK_FLAGS_x86_64-unknown-bitrig := -shared -pic -g -pthread $(LDFLAGS)
 +CFG_GCCISH_DEF_FLAG_x86_64-unknown-bitrig := -Wl,--export-dynamic,--dynamic-list=
 +CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-pic -Wl,-whole-archive
 +CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-no-whole-archive
@@ -108,10 +108,42 @@ index 0000000..e2e5396
 +CFG_RUN_TARG_x86_64-unknown-bitrig=$(call CFG_RUN_x86_64-unknown-bitrig,,$(2))
 +CFG_GNU_TRIPLE_x86_64-unknown-bitrig := x86_64-unknown-bitrig
 diff --git a/mk/platform.mk b/mk/platform.mk
-index 7ca2473..5d98fb1 100644
+index 7ca2473..18f17ef 100644
 --- a/mk/platform.mk
 +++ b/mk/platform.mk
-@@ -174,21 +174,29 @@ define CFG_MAKE_TOOLCHAIN
+@@ -139,24 +139,24 @@ ifdef CFG_CCACHE_BASEDIR
+   export CCACHE_BASEDIR
+ endif
+ 
+ FIND_COMPILER = $(word 1,$(1:ccache=))
+ 
+ define CFG_MAKE_TOOLCHAIN
+   # Prepend the tools with their prefix if cross compiling
+   ifneq ($(CFG_BUILD),$(1))
+-	CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
+-	CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
+-	CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
+-	AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
+-	RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
+-	    -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
++  CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
++  CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
++  CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
++  AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
++  RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
++      -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
+ 
+-	RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
++  RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
+   endif
+ 
+   CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
+         $$(CFG_GCCISH_CFLAGS) \
+         $$(CFG_GCCISH_CFLAGS_$(1)) \
+         $$(CFG_DEPEND_FLAGS) \
+         -c -o $$(1) $$(2)
+   CFG_LINK_C_$(1) = $$(CC_$(1)) \
+@@ -174,29 +174,37 @@ define CFG_MAKE_TOOLCHAIN
    CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
          $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
          $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
@@ -120,19 +152,19 @@ index 7ca2473..5d98fb1 100644
  
    ifeq ($$(findstring $(HOST_$(1)),arm mips mipsel),)
  
-+	# On Bitrig, we need the relocation model to be PIC for everthing
++  # On Bitrig, we need the relocation model to be PIC for everthing
 +  ifeq (,$(filter $(OSTYPE_$(1)),bitrig))
-+		LLVM_MC_RELOCATION_MODEL="pic"
-+	else
-+		LLVM_MC_RELOCATION_MODEL="default"
-+	endif
++    LLVM_MC_RELOCATION_MODEL="pic"
++  else
++    LLVM_MC_RELOCATION_MODEL="default"
++  endif
 +
    # We're using llvm-mc as our assembler because it supports
    # .cfi pseudo-ops on mac
    CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
                      $$(LLVM_MC_$$(CFG_BUILD)) \
                      -assemble \
-+										-relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
++                    -relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
                      -filetype=obj \
                      -triple=$(1) \
                      -o=$$(1)
@@ -141,6 +173,15 @@ index 7ca2473..5d98fb1 100644
    # For the ARM and MIPS crosses, use the toolchain assembler
    # FIXME: We should be able to use the LLVM assembler
    CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
+-		    $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
++        $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
+ 
+   endif
+ 
+ endef
+ 
+ $(foreach target,$(CFG_TARGET), \
+   $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))
 diff --git a/src/compiletest/util.rs b/src/compiletest/util.rs
 index a116cc3..f4050f7 100644
 --- a/src/compiletest/util.rs
@@ -164,7 +205,7 @@ index a116cc3..f4050f7 100644
          }
      }
 diff --git a/src/doc/reference.md b/src/doc/reference.md
-index f3ad19b..6c4c06d 100644
+index a8abb59..0a91886 100644
 --- a/src/doc/reference.md
 +++ b/src/doc/reference.md
 @@ -2143,17 +2143,18 @@ The following configurations must be defined by the implementation:
@@ -841,10 +882,10 @@ index 955081a..ca233a7 100644
              realpath: |p| Ok(p.clone())
 diff --git a/src/librustc_back/target/bitrig_base.rs b/src/librustc_back/target/bitrig_base.rs
 new file mode 100644
-index 0000000..83626e3
+index 0000000..c816904
 --- /dev/null
 +++ b/src/librustc_back/target/bitrig_base.rs
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,29 @@
 +// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 +// file at the top-level directory of this distribution and at
 +// http://rust-lang.org/COPYRIGHT.
@@ -864,6 +905,7 @@ index 0000000..83626e3
 +        dynamic_linking: true,
 +        executables: true,
 +        morestack: true,
++        linker_is_gnu: true,
 +        has_rpath: true,
 +        position_independent_executables: true,
 +        pre_link_args: vec!(
@@ -1020,7 +1062,7 @@ index cbb288a..dffbb96 100644
  
          target_triple: target_triple,
 diff --git a/src/librustdoc/flock.rs b/src/librustdoc/flock.rs
-index a89b20c..837a110 100644
+index 0f0dbf6..0d8c481 100644
 --- a/src/librustdoc/flock.rs
 +++ b/src/librustdoc/flock.rs
 @@ -58,17 +58,17 @@ mod imp {
@@ -1043,10 +1085,10 @@ index a89b20c..837a110 100644
              pub l_pid: libc::pid_t,
              pub l_type: libc::c_short,
 diff --git a/src/libstd/dynamic_lib.rs b/src/libstd/dynamic_lib.rs
-index 368abe7..51ff86a 100644
+index ecfe2d1..e13b81b 100644
 --- a/src/libstd/dynamic_lib.rs
 +++ b/src/libstd/dynamic_lib.rs
-@@ -176,34 +176,36 @@ mod test {
+@@ -178,34 +178,36 @@ mod test {
                     expected_result, result)
          }
      }
@@ -1080,16 +1122,16 @@ index 368abe7..51ff86a 100644
  pub mod dl {
      use self::Rtld::*;
  
-     use prelude::*;
-     use c_str::CString;
+     use prelude::v1::*;
+     use c_str::{CString, ToCStr};
      use libc;
      use ptr;
  
 diff --git a/src/libstd/os.rs b/src/libstd/os.rs
-index df50b7f..0f84a34 100644
+index 615a20b..8f66374 100644
 --- a/src/libstd/os.rs
 +++ b/src/libstd/os.rs
-@@ -694,17 +694,18 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+@@ -693,17 +693,18 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
      }
  
      res
@@ -1109,7 +1151,7 @@ index df50b7f..0f84a34 100644
  #[cfg(not(windows))]
  fn real_args() -> Vec<String> {
      real_args_as_bytes().into_iter()
-@@ -1333,16 +1334,47 @@ pub mod consts {
+@@ -1332,16 +1333,47 @@ pub mod consts {
      /// platform: in this case, the empty string.
      pub const EXE_SUFFIX: &'static str = "";
  
@@ -1158,7 +1200,7 @@ index df50b7f..0f84a34 100644
      /// A string describing the specific operating system in use: in this
      /// case, `android`.
 diff --git a/src/libstd/rt/args.rs b/src/libstd/rt/args.rs
-index 98eff62..43c9c24 100644
+index 4734a39..b46b512 100644
 --- a/src/libstd/rt/args.rs
 +++ b/src/libstd/rt/args.rs
 @@ -37,17 +37,18 @@ pub fn take() -> Option<Vec<Vec<u8>>> { imp::take() }
@@ -1174,7 +1216,7 @@ index 98eff62..43c9c24 100644
 +          target_os = "dragonfly",
 +          target_os = "bitrig"))]
  mod imp {
-     use prelude::*;
+     use prelude::v1::*;
  
      use mem;
      use slice;
@@ -1230,7 +1272,7 @@ index 862808a..6814806 100644
  
  #[cfg(target_os = "ios")]
 diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
-index 259c15b..c7079af 100644
+index 94a2c9b..3622ea6 100644
 --- a/src/libstd/sys/common/net.rs
 +++ b/src/libstd/sys/common/net.rs
 @@ -682,25 +682,28 @@ impl TcpStream {
@@ -1434,10 +1476,10 @@ index 1bb8ed7..62aacf1 100644
 +    }
 +}
 diff --git a/src/libstd/sys/unix/fs.rs b/src/libstd/sys/unix/fs.rs
-index 8de4ffa..4517f7b 100644
+index e3e0b27..75b4863 100644
 --- a/src/libstd/sys/unix/fs.rs
 +++ b/src/libstd/sys/unix/fs.rs
-@@ -284,16 +284,43 @@ pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
+@@ -283,16 +283,43 @@ pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
      let dst = dst.to_c_str();
      mkerr_libc(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })
  }
@@ -1481,7 +1523,7 @@ index 8de4ffa..4517f7b 100644
      #[cfg(not(any(target_os = "linux", target_os = "android")))]
      fn gen(stat: &libc::stat) -> u64 { stat.st_gen as u64 }
      #[cfg(any(target_os = "linux", target_os = "android"))]
-@@ -305,19 +332,19 @@ fn mkstat(stat: &libc::stat) -> FileStat {
+@@ -304,19 +331,19 @@ fn mkstat(stat: &libc::stat) -> FileStat {
              libc::S_IFREG => io::FileType::RegularFile,
              libc::S_IFDIR => io::FileType::Directory,
              libc::S_IFIFO => io::FileType::NamedPipe,
@@ -1505,10 +1547,10 @@ index 8de4ffa..4517f7b 100644
              gid: stat.st_gid as u64,
              blksize: stat.st_blksize as u64,
 diff --git a/src/libstd/sys/unix/os.rs b/src/libstd/sys/unix/os.rs
-index 595191d..17a6962 100644
+index 6a8f55e..c6d4097 100644
 --- a/src/libstd/sys/unix/os.rs
 +++ b/src/libstd/sys/unix/os.rs
-@@ -35,16 +35,26 @@ pub fn errno() -> int {
+@@ -36,16 +36,26 @@ pub fn errno() -> int {
          extern {
              fn __error() -> *const c_int;
          }
@@ -1535,7 +1577,7 @@ index 595191d..17a6962 100644
          unsafe {
              __dfly_error()
          }
-@@ -66,17 +76,18 @@ pub fn errno() -> int {
+@@ -67,17 +77,18 @@ pub fn errno() -> int {
  }
  
  /// Get a detailed string description for the given error number
@@ -1555,7 +1597,7 @@ index 595191d..17a6962 100644
          }
          unsafe {
              strerror_r(errnum, buf, buflen)
-@@ -203,16 +214,38 @@ pub fn load_self() -> Option<Vec<u8>> {
+@@ -204,16 +215,38 @@ pub fn load_self() -> Option<Vec<u8>> {
      use std::io;
  
      match io::fs::readlink(&Path::new("/proc/curproc/file")) {
@@ -1595,10 +1637,10 @@ index 595191d..17a6962 100644
          Err(..) => None
      }
 diff --git a/src/libstd/sys/unix/process.rs b/src/libstd/sys/unix/process.rs
-index c1c28bd..d617b09 100644
+index af09bf4..7cf2141 100644
 --- a/src/libstd/sys/unix/process.rs
 +++ b/src/libstd/sys/unix/process.rs
-@@ -597,17 +597,18 @@ fn translate_status(status: c_int) -> ProcessExit {
+@@ -598,17 +598,18 @@ fn translate_status(status: c_int) -> ProcessExit {
          pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
          pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
          pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
@@ -1644,7 +1686,7 @@ index 77c5582..a26a119 100644
  
      pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = 0 as *mut _;
 diff --git a/src/libstd/time/mod.rs b/src/libstd/time/mod.rs
-index 7bc1579..8befec6 100644
+index d6c94f2..b10ee1a 100644
 --- a/src/libstd/time/mod.rs
 +++ b/src/libstd/time/mod.rs
 @@ -63,17 +63,18 @@ fn precise_time_ns() -> u64 {
@@ -1834,7 +1876,7 @@ index 81774c7..d4c85c4 100644
      1 % 1
  }
 diff --git a/src/test/run-pass/out-of-stack-new-thread-no-split.rs b/src/test/run-pass/out-of-stack-new-thread-no-split.rs
-index 674d0dc..53b20fb 100644
+index 7aac2d7..d476904 100644
 --- a/src/test/run-pass/out-of-stack-new-thread-no-split.rs
 +++ b/src/test/run-pass/out-of-stack-new-thread-no-split.rs
 @@ -7,16 +7,17 @@
@@ -1852,9 +1894,9 @@ index 674d0dc..53b20fb 100644
  
  use std::io::process::Command;
  use std::os;
+ use std::thread::Thread;
  
  // lifted from the test module
- // Inlining to avoid llvm turning the recursive functions into tail calls,
 diff --git a/src/test/run-pass/out-of-stack-no-split.rs b/src/test/run-pass/out-of-stack-no-split.rs
 index 7992677..5054dbb 100644
 --- a/src/test/run-pass/out-of-stack-no-split.rs
