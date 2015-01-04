@@ -62,6 +62,10 @@ patch_src(){
   cd ${TOP}/${1}
   if [ ! -e .patched ]; then
     patch -p1 < ${TOP}/../patches/${2}.patch
+    if (( $? )); then 
+      echo "Failed to patch ${1}"
+      exit 1
+    fi
     date > .patched
   else
     echo "Rust already patched on:" `cat .patched`
