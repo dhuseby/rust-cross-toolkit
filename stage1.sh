@@ -77,8 +77,8 @@ bitrig_build_llvm(){
 bitrig_build_rust_parts(){
   # build the rustllvm pieces
   cd ${TOP}/rust/src/rustllvm
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -Wl,-pic PassWrapper.cpp
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -Wl,-pic RustWrapper.cpp
+  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
+  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
   ar rcs librustllvm.a PassWrapper.o RustWrapper.o	
   cp librustllvm.a ${TARGET}
 
@@ -100,8 +100,8 @@ bitrig_build_rust_parts(){
 
   cd ${TOP}/rust/src/rt
   ${LLVM_INSTALL}/bin/llc rust_try.ll
-  ${CC} -c -relocation-model=pic -o rust_try.o rust_try.s
-  ${CC} -c -relocation-model=pic -o record_sp.o arch/x86_64/record_sp.S
+  ${CC} -c -fPIC -o rust_try.o rust_try.s
+  ${CC} -c -fPIC -o record_sp.o arch/x86_64/record_sp.S
   ar rcs ${TARGET}/librustrt_native.a rust_try.o record_sp.o
 
   #cd ${TOP}/rust/src/rt
@@ -109,15 +109,15 @@ bitrig_build_rust_parts(){
   #ar rcs ${TARGET}/libcontext_switch.a context.o
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -Wl,-pic -o rust_builtin.o rust_builtin.c
+  ${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
   ar rcs ${TARGET}/librust_builtin.a rust_builtin.o 
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -relocation-model=pic -o morestack.o arch/x86_64/morestack.S
+  ${CC} -c -fPIC -o morestack.o arch/x86_64/morestack.S
   ar rcs ${TARGET}/libmorestack.a morestack.o
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -Wl,-pic -o miniz.o miniz.c
+  ${CC} -c -fPIC -o miniz.o miniz.c
   ar rcs ${TARGET}/libminiz.a miniz.o 
 
   cd ${TOP}/rust/src/rt/hoedown
