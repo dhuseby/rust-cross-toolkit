@@ -13,7 +13,7 @@ setup(){
 clone(){
   if [ ! -e rust ]; then
     cd ${TOP}
-    git scclone https://github.com/rust-lang/rust.git
+    git scclone https://github.com/rust-lang/rust.git rust
     cd rust
     git id > ${TOP}/revision.id
     git submodule init
