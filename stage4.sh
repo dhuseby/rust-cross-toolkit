@@ -43,6 +43,9 @@ clone(){
     cd ${TOP}
     git clone --reference ${TOP}/../stage1/rust https://github.com/rust-lang/rust.git
     cd rust
+    echo "resetting to revision used in stage1"
+    git reset --hard `cat ${TOP}/../stage1/revision.id`
+    echo "initializing submodules"
     git submodule init
     git submodule update
   else
@@ -54,11 +57,16 @@ clone(){
 }
 
 patch_src(){
-  echo "Patching ${TOP}/${1} with ${2}.patch"
   cd ${TOP}/${1}
+  ID=`git id`
+  if [ ! -e ${TOP}/../patches/${2}_${ID}.patch ]; then
+    echo "${2} patch needs to be rebased to ${1} tip ${ID}"
+    exit 1
+  fi
   if [ ! -e .patched ]; then
-    patch -p1 < ${TOP}/../patches/${2}.patch
-    if (( $? )); then 
+    echo "Patching ${TOP}/${1} with ${2}_${ID}.patch"
+    patch -p1 < ${TOP}/../patches/${2}_${ID}.patch
+    if (( $? )); then
       echo "Failed to patch ${1}"
       exit 1
     fi

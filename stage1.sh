@@ -15,21 +15,27 @@ clone(){
     cd ${TOP}
     git clone https://github.com/rust-lang/rust.git
     cd rust
+    git id > ${TOP}/revision.id
     git submodule init
     git submodule update
   else
     cd ${TOP}/rust
-    git pull upstream
-    git submodule update --merge
+    #git pull upstream
+    #git submodule update --merge
   fi
 }
 
 patch_src(){
-  echo "Patching ${TOP}/${1} with ${2}.patch"
   cd ${TOP}/${1}
+  ID=`git id`
+  if [ ! -e ${TOP}/../patches/${2}_${ID}.patch ]; then
+    echo "${2} patch needs to be rebased to ${1} tip ${ID}"
+    exit 1
+  fi
   if [ ! -e .patched ]; then
-    patch -p1 < ${TOP}/../patches/${2}.patch
-    if (( $? )); then 
+    echo "Patching ${TOP}/${1} with ${2}_${ID}.patch"
+    patch -p1 < ${TOP}/../patches/${2}_${ID}.patch
+    if (( $? )); then
       echo "Failed to patch ${1}"
       exit 1
     fi
@@ -110,7 +116,7 @@ bitrig_build_rust_parts(){
 
   cd ${TOP}/rust/src/rt
   ${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
-  ar rcs ${TARGET}/librust_builtin.a rust_builtin.o 
+  ar rcs ${TARGET}/librust_builtin.a rust_builtin.o
 
   cd ${TOP}/rust/src/rt
   ${CC} -c -fPIC -o morestack.o arch/x86_64/morestack.S
@@ -118,10 +124,10 @@ bitrig_build_rust_parts(){
 
   cd ${TOP}/rust/src/rt
   ${CC} -c -fPIC -o miniz.o miniz.c
-  ar rcs ${TARGET}/libminiz.a miniz.o 
+  ar rcs ${TARGET}/libminiz.a miniz.o
 
   cd ${TOP}/rust/src/rt/hoedown
-  ${MAKE} VERBOSE=1 libhoedown.a 
+  ${MAKE} VERBOSE=1 libhoedown.a
   cp libhoedown.a ${TARGET}
 }
 
