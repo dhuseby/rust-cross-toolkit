@@ -43,7 +43,7 @@ clone(){
   if [ ! -e rust ]; then
     # clone everything
     cd ${TOP}
-    git clone --reference ${TOP}/../stage1/rust https://github.com/rust-lang/rust.git
+    git scclone --reference ${TOP}/../stage1/rust https://github.com/rust-lang/rust.git
     cd rust
     echo "resetting to revision used in stage1"
     git reset --hard `cat ${TOP}/../stage1/revision.id`
