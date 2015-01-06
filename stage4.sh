@@ -86,11 +86,12 @@ bitrig_configure(){
 
   # configure rust
   cd ${TOP}/rust
-  configure --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  configure --disable-optimize --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
 }
 
 bitrig_build(){
   cd ${TOP}/rust
+  export RUST_BACKTRACE=1
   ${MAKE} VERBOSE=1
 }
 
