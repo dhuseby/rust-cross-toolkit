@@ -1550,7 +1550,7 @@ index b49ace8..c7a665c 100644
              gid: stat.st_gid as u64,
              blksize: stat.st_blksize as u64,
 diff --git a/src/libstd/sys/unix/os.rs b/src/libstd/sys/unix/os.rs
-index 181b8fd..42da480 100644
+index 181b8fd..60026da 100644
 --- a/src/libstd/sys/unix/os.rs
 +++ b/src/libstd/sys/unix/os.rs
 @@ -35,16 +35,26 @@ pub fn errno() -> int {
@@ -1616,7 +1616,7 @@ index 181b8fd..42da480 100644
 +        use libc::consts::os::extra::*;
 +        use iter::range;
 +        use rt;
-+        let mut v: Vec<u8> = Vec::from_elem(PATH_MAX as uint, 0i as u8);
++        let mut v: Vec<u8> = Vec::repeat(0i as u8).take(PATH_MAX as uint).collect()
 +        let args: Vec<Vec<u8>> = rt::args::clone().unwrap_or_else(|| vec![]);
 +        let ref exe: Vec<u8> = args[0];
 +        let err: int = realpath(exe.as_ptr() as *const c_char,
