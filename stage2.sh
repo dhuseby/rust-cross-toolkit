@@ -94,7 +94,7 @@ linux_build(){
   export CFG_PREFIX="${TOP}/../stage1/install"
   export CFG_LLVM_LINKAGE_FILE="${TOP}/rust/src/librustc_llvm/llvmdeps.rs"
   export RUST_FLAGS="-g"
-  RUST_LIBS="core libc alloc unicode collections rand std arena regex log fmt_macros serialize term syntax flate time getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc regex_macros rustc_trans rustc_typeck rustc_borrowck rustc_resolve rustc_driver rustdoc "
+  RUST_LIBS="core libc alloc unicode collections rand std arena regex log fmt_macros serialize term syntax flate getopts regex test coretest graphviz rustc_back rustc_llvm rbml rustc rustc_trans rustc_typeck rustc_borrowck rustc_resolve rustc_driver rustdoc "
 
   # compile rust libraries
   for lib in $RUST_LIBS; do
