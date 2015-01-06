@@ -205,7 +205,7 @@ index a116cc3..f4050f7 100644
          }
      }
 diff --git a/src/doc/reference.md b/src/doc/reference.md
-index d793028..1d67623 100644
+index 5c00993..75a5094 100644
 --- a/src/doc/reference.md
 +++ b/src/doc/reference.md
 @@ -2143,17 +2143,18 @@ The following configurations must be defined by the implementation:
