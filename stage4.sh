@@ -41,10 +41,10 @@ clone(){
   if [ ! -e rust ]; then
     # clone everything
     cd ${TOP}
-    git scclone https://github.com/rust-lang/rust.git rust
+    REV=`cat ${TOP}/../stage1/revision.id`
+    echo "cloning at the revision used in stage1: ${REV}"
+    git scclone https://github.com/rust-lang/rust.git rust ${REV}
     cd rust
-    echo "resetting to revision used in stage1"
-    git reset --hard `cat ${TOP}/../stage1/revision.id`
     echo "initializing submodules"
     git submodule init
     git submodule update
