@@ -15,6 +15,8 @@ clone(){
     cd ${TOP}
     git scclone https://github.com/rust-lang/rust.git rust
     cd rust
+    REV=`head -n 1 src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
+    git checkout ${REV}
     git id > ${TOP}/revision.id
     git submodule init
     git submodule update
