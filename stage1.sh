@@ -13,10 +13,11 @@ setup(){
 clone(){
   if [ ! -e rust ]; then
     cd ${TOP}
-    git scclone https://github.com/rust-lang/rust.git rust
+    git cclone https://github.com/rust-lang/rust.git tmp-rust
+    REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
+    rm -rf tmp-rust
+    git scclone https://github.com/rust-lang/rust.git rust ${REV}
     cd rust
-    REV=`head -n 1 src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
-    git checkout ${REV}
     git id > ${TOP}/revision.id
     git submodule init
     git submodule update
