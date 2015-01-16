@@ -2,6 +2,8 @@
 set -x
 
 OS=`uname -s`
+STAGE=${0#*/}
+STAGE=${STAGE%%.sh}
 
 setup(){
   echo "Creating stage1"
@@ -13,9 +15,10 @@ setup(){
 clone(){
   if [ ! -e rust ]; then
     cd ${TOP}
-    git cclone https://github.com/rust-lang/rust.git tmp-rust
-    REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
-    rm -rf tmp-rust
+    #git cclone https://github.com/rust-lang/rust.git tmp-rust
+    #REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
+    REV="9e4e524"
+    #rm -rf tmp-rust
     git scclone https://github.com/rust-lang/rust.git rust ${REV}
     cd rust
     git id > ${TOP}/revision.id
@@ -31,13 +34,17 @@ clone(){
 patch_src(){
   cd ${TOP}/${1}
   ID=`git id`
-  if [ ! -e ${TOP}/../patches/${2}_${ID}.patch ]; then
+  PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}.patch
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
     echo "${2} patch needs to be rebased to ${1} tip ${ID}"
     exit 1
   fi
   if [ ! -e .patched ]; then
-    echo "Patching ${TOP}/${1} with ${2}_${ID}.patch"
-    patch -p1 < ${TOP}/../patches/${2}_${ID}.patch
+    echo "Patching ${TOP}/${1} with ${PATCH}"
+    patch -p1 < ${PATCH}
     if (( $? )); then
       echo "Failed to patch ${1}"
       exit 1

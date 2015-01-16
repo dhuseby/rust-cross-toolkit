@@ -2,6 +2,8 @@
 set -x
 
 OS=`uname -s`
+STAGE=${0#*/}
+STAGE=${STAGE%%.sh}
 
 check(){
   if [ ${OS} != "Bitrig" ]; then
@@ -59,13 +61,17 @@ clone(){
 patch_src(){
   cd ${TOP}/${1}
   ID=`git id`
-  if [ ! -e ${TOP}/../patches/${2}_${ID}.patch ]; then
+  PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}.patch
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
     echo "${2} patch needs to be rebased to ${1} tip ${ID}"
     exit 1
   fi
   if [ ! -e .patched ]; then
-    echo "Patching ${TOP}/${1} with ${2}_${ID}.patch"
-    patch -p1 < ${TOP}/../patches/${2}_${ID}.patch
+    echo "Patching ${TOP}/${1} with ${PATCH}"
+    patch -p1 < ${PATCH}
     if (( $? )); then
       echo "Failed to patch ${1}"
       exit 1

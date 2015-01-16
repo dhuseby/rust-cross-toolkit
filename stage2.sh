@@ -2,6 +2,8 @@
 set -x
 
 OS=`uname -s`
+STAGE=${0#*/}
+STAGE=${STAGE%%.sh}
 
 check(){
   if [ ${OS} != "Linux" ]; then
@@ -63,13 +65,17 @@ clone(){
 patch_src(){
   cd ${TOP}/${1}
   ID=`git id`
-  if [ ! -e ${TOP}/../patches/${2}_${ID}.patch ]; then
+  PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}.patch
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
     echo "${2} patch needs to be rebased to ${1} tip ${ID}"
     exit 1
   fi
   if [ ! -e .patched ]; then
-    echo "Patching ${TOP}/${1} with ${2}_${ID}.patch"
-    patch -p1 < ${TOP}/../patches/${2}_${ID}.patch
+    echo "Patching ${TOP}/${1} with ${PATCH}"
+    patch -p1 < ${PATCH}
     if (( $? )); then
       echo "Failed to patch ${1}"
       exit 1
@@ -106,11 +112,20 @@ linux_build(){
       echo "compiling $lib"
       LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
         ${RUSTC} --target ${TARGET} ${RUST_FLAGS} --crate-type lib -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
+      if (( $? )); then
+        echo "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
+        exit 1
+      fi
     fi
   done
 
   LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
     ${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${TARGET} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
+
+  if (( $? )); then
+    echo "Failed to compile ${RUST_SRC}/src/driver/driver.rs"
+    exit 1
+  fi
 
   cd ${TOP}/..
   tar cvzf stage2.tgz stage2/*.o stage2/rust-libs
