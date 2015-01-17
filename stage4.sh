@@ -83,22 +83,25 @@ patch_src(){
 }
 
 bitrig_configure(){
-  #export CC="/usr/bin/clang"
-  #export CXX="/usr/bin/clang++"
-  #export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O0 -fomit-frame-pointer -fPIC"
-  #export CXXFLAGS="-std=c++11 -stdlib=libc++ -mstackrealign -I/usr/include/c++/v1/ -I/usr/include/libcxxabi -I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -g -O0 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual -v"
-  #export LDFLAGS="-g -stdlib=libc++ -L/usr/lib/llvm-3.4/lib -L/usr/lib/x86_64-linux-gnu/ -L/lib64 -L/lib -L/usr/lib -lc++ -lc++abi -lunwind -lc -lpthread -lffi -ltinfo -ldl -lm"
   PREFIX="/usr/local"
 
   # configure rust
   cd ${TOP}/rust
-  configure --disable-optimize --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  ./configure --disable-optimize --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  if (( $? )); then
+    echo "Failed to configure rust"
+    exit 1
+  fi
 }
 
 bitrig_build(){
   cd ${TOP}/rust
   export RUST_BACKTRACE=1
   ${MAKE} VERBOSE=1
+  if (( $? )); then
+    echo "Failed to build rust"
+    exit 1
+  fi
 }
 
 bitrig(){
@@ -110,10 +113,6 @@ bitrig(){
   patch_src rust/src/llvm llvm
   patch_src rust/src/jemalloc jemalloc
   bitrig_configure
-  # patch again because rust ./configure clobbers submodules
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/jemalloc jemalloc
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-bitrig/rt/llvmdeps.rs
   bitrig_build

@@ -34,13 +34,12 @@ bitrig_build(){
   cd ${TOP}
   RL=${TOP}/../stage2/rust-libs
   SUP_LIBS="-Wl,-whole-archive -lmorestack -Wl,-no-whole-archive -lrust_builtin -lrustllvm -lcompiler-rt -lbacktrace -lhoedown -lminiz -lrustrt_native"
-  LLVM_LIBS="`llvm-config --libs` -lz -lcurses"
+  LLVM_LIBS="`${TOP}/../stage1/install/bin/llvm-config --libs` `${TOP}/../stage1/install/bin/llvm-config --system-libs`"
   RUST_DEPS="$RL/librustc.rlib $RL/librustc_llvm.rlib $RL/libarena.rlib $RL/libgetopts.rlib $RL/librustc_back.rlib $RL/libsyntax.rlib $RL/libserialize.rlib $RL/librbml.rlib $RL/libflate.rlib $RL/libterm.rlib $RL/liblog.rlib $RL/libgraphviz.rlib $RL/libfmt_macros.rlib $RL/libstd.rlib $RL/libcollections.rlib $RL/libunicode.rlib $RL/liballoc.rlib $RL/liblibc.rlib $RL/librand.rlib $RL/libcore.rlib $RL/libcoretest.rlib $RL/libregex.rlib $RL/librustc_driver.rlib $RL/librustc_trans.rlib $RL/librustc_typeck.rlib $RL/librustc_borrowck.rlib $RL/librustc_resolve.rlib $RL/librustdoc.rlib $RL/libtest.rlib"
-  export CXX="/usr/bin/clang++"
-  export CXXFLAGS="-I/usr/local/include -D_DEBUG -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O0 -fomit-frame-pointer -std=c++11 -stdlib=libc++ -fvisibility-inlines-hidden -fno-exceptions -fno-rtti -fPIC -ffunction-sections -fdata-sections -Wcast-qual"
-  export LDFLAGS="-L/usr/local/lib -stdlib=libc++ -lc++ -lc++abi -lm -lc -lz -lcurses -lpthread -v"
+  CXXFLAGS="`${TOP}/../stage1/install/bin/llvm-config --cxxflags` -stdlib=libc++ -v"
+  LDFLAGS="-lc++ -lc++abi"
 
-  ${CXX} ${CXXFLAGS} -o ${TOP}/bin/rustc -Wl,--start-group ${TOP}/../stage2/driver.o ${RUST_DEPS} -L${TOP}/../stage1/libs/llvm -L${TOP}/../stage1/libs ${SUP_LIBS} ${LLVM_LIBS} -Wl,--end-group
+  cc ${CXXFLAGS} -o ${TOP}/bin/rustc -Wl,--start-group ${TOP}/../stage2/driver.o ${RUST_DEPS} -L${TOP}/../stage1/libs/llvm -L${TOP}/../stage1/libs -L${TOP}/../stage1/libs/llvm ${SUP_LIBS} ${LLVM_LIBS} ${LDFLAGS} -Wl,--end-group
 
   cp ${TOP}/../stage1/libs/libcompiler-rt.a ${TOP}/lib
   cp ${TOP}/../stage1/libs/libmorestack.a ${TOP}/lib
