@@ -107,6 +107,29 @@ index 0000000..75a5a9d
 +CFG_RUN_x86_64-unknown-bitrig=$(2)
 +CFG_RUN_TARG_x86_64-unknown-bitrig=$(call CFG_RUN_x86_64-unknown-bitrig,,$(2))
 +CFG_GNU_TRIPLE_x86_64-unknown-bitrig := x86_64-unknown-bitrig
+diff --git a/mk/main.mk b/mk/main.mk
+index a97e68a..c2d145e 100644
+--- a/mk/main.mk
++++ b/mk/main.mk
+@@ -394,17 +394,17 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
+ ifeq ($(1),0)
+ # Don't run the stage0 compiler under valgrind - that ship has sailed
+ CFG_VALGRIND_COMPILE$(1) =
+ else
+ CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
+ endif
+ 
+ # Add RUSTFLAGS_STAGEN values to the build command
+-EXTRAFLAGS_STAGE$(1) = $$(RUSTFLAGS_STAGE$(1))
++EXTRAFLAGS_STAGE$(1) = --sysroot $$(HROOT$(1)_H_$(3)) $$(RUSTFLAGS_STAGE$(1))
+ 
+ CFGFLAG$(1)_T_$(2)_H_$(3) = stage$(1)
+ 
+ endef
+ 
+ # Same macro/variables as above, but defined in a separate loop so it can use
+ # all the variables above for all archs. The RPATH_VAR setup sometimes needs to
+ # reach across triples to get things in order.
 diff --git a/mk/platform.mk b/mk/platform.mk
 index 50bf51b..ecfe451 100644
 --- a/mk/platform.mk
