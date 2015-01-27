@@ -491,10 +491,10 @@ index f9027f1..867499b 100644
          for x in self.iter() {
              if is_first {
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index e48272b..bdc1aff 100644
+index e48272b..b1f9763 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
-@@ -276,33 +276,34 @@ pub use funcs::bsd43::{shutdown};
+@@ -276,27 +276,28 @@ pub use funcs::bsd43::{shutdown};
  #[cfg(windows)] pub use funcs::extra::kernel32::{DisconnectNamedPipe, OpenProcess};
  #[cfg(windows)] pub use funcs::extra::kernel32::{MoveFileExW, VirtualProtect};
  #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
@@ -522,16 +522,9 @@ index e48272b..bdc1aff 100644
  #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
  pub use consts::os::bsd44::{TCP_KEEPIDLE};
  
--#[cfg(any(target_os = "macos", target_os = "ios"))]
-+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "bitrig"))]
+ #[cfg(any(target_os = "macos", target_os = "ios"))]
  pub use consts::os::bsd44::{TCP_KEEPALIVE};
  #[cfg(any(target_os = "macos", target_os = "ios"))]
- pub use consts::os::extra::{F_FULLFSYNC};
- 
- #[cfg(any(target_os = "macos", target_os = "ios"))]
- pub use types::os::arch::extra::{mach_timebase_info};
- 
- 
 @@ -1326,16 +1327,232 @@ pub mod types {
              }
              pub mod bsd44 {
@@ -765,27 +758,7 @@ index e48272b..bdc1aff 100644
                  use types::os::arch::extra::{int64, time64_t};
                  use types::os::arch::posix88::{dev_t, ino_t};
  
-@@ -3596,16 +3813,19 @@ pub mod consts {
-             pub const MAP_RENAME : c_int = 0x0020;
-             pub const MAP_NORESERVE : c_int = 0x0040;
-             pub const MAP_HASSEMAPHORE : c_int = 0x0200;
-             pub const MAP_STACK : c_int = 0x0400;
-             pub const MAP_NOSYNC : c_int = 0x0800;
-             pub const MAP_NOCORE : c_int = 0x020000;
- 
-             pub const IPPROTO_RAW : c_int = 255;
-+
-+            #[cfg(target_os = "bitrig")]
-+            pub const PATH_MAX: c_int = 1024;
-         }
-         pub mod sysconf {
-             use types::os::arch::c95::c_int;
- 
-             pub const _SC_ARG_MAX : c_int = 1;
-             pub const _SC_CHILD_MAX : c_int = 2;
-             pub const _SC_CLK_TCK : c_int = 3;
-             pub const _SC_NGROUPS_MAX : c_int = 4;
-@@ -3655,16 +3875,393 @@ pub mod consts {
+@@ -3655,16 +3872,395 @@ pub mod consts {
              pub const _SC_RTSIG_MAX : c_int = 48;
              pub const _SC_SEM_NSEMS_MAX : c_int = 49;
              pub const _SC_SEM_VALUE_MAX : c_int = 50;
@@ -1112,6 +1085,8 @@ index e48272b..bdc1aff 100644
 +            pub const MAP_HASSEMAPHORE : c_int = 0x0000;
 +
 +            pub const IPPROTO_RAW : c_int = 255;
++
++            pub const PATH_MAX: c_int = 1024;
 +        }
 +        pub mod sysconf {
 +            use types::os::arch::c95::c_int;
@@ -1179,7 +1154,7 @@ index e48272b..bdc1aff 100644
              pub const EXIT_FAILURE : c_int = 1;
              pub const EXIT_SUCCESS : c_int = 0;
              pub const RAND_MAX : c_int = 2147483647;
-@@ -4351,44 +4948,47 @@ pub mod funcs {
+@@ -4351,44 +4947,47 @@ pub mod funcs {
          }
      }
  
@@ -1228,7 +1203,7 @@ index e48272b..bdc1aff 100644
                  #[link_name = "stat64"]
                  pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4571,26 +5171,28 @@ pub mod funcs {
+@@ -4571,26 +5170,28 @@ pub mod funcs {
  
      }
  
@@ -1258,7 +1233,7 @@ index e48272b..bdc1aff 100644
                  #[link_name = "lstat64"]
                  pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4688,17 +5290,18 @@ pub mod funcs {
+@@ -4688,17 +5289,18 @@ pub mod funcs {
  
  
      #[cfg(any(target_os = "windows",
@@ -1278,7 +1253,7 @@ index e48272b..bdc1aff 100644
      #[cfg(not(windows))]
      pub mod bsd43 {
          use types::common::c95::{c_void};
-@@ -4774,17 +5377,18 @@ pub mod funcs {
+@@ -4774,17 +5376,18 @@ pub mod funcs {
                            addrlen: c_int) -> c_int;
              pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
          }
@@ -1298,7 +1273,7 @@ index e48272b..bdc1aff 100644
              pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
              pub fn sysctl(name: *mut c_int,
                            namelen: c_uint,
-@@ -4803,20 +5407,21 @@ pub mod funcs {
+@@ -4803,20 +5406,21 @@ pub mod funcs {
                                     mibp: *mut c_int,
                                     sizep: *mut size_t)
                                     -> c_int;
@@ -1321,7 +1296,7 @@ index e48272b..bdc1aff 100644
          extern {
              pub fn getdtablesize() -> c_int;
              pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
-@@ -4837,17 +5442,17 @@ pub mod funcs {
+@@ -4837,17 +5441,17 @@ pub mod funcs {
          use types::os::arch::c95::{c_char, c_int};
  
          extern {
@@ -1824,28 +1799,20 @@ index 862808a..6814806 100644
  
  #[cfg(target_os = "ios")]
 diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
-index 902942d..fa2f6cb 100644
+index 902942d..af3b3ca 100644
 --- a/src/libstd/sys/common/net.rs
 +++ b/src/libstd/sys/common/net.rs
-@@ -679,30 +679,34 @@ impl TcpStream {
-         let ret = setsockopt(self.fd(), libc::SOL_SOCKET, libc::SO_KEEPALIVE,
-                              seconds.is_some() as libc::c_int);
-         match seconds {
-             Some(n) => ret.and_then(|()| self.set_tcp_keepalive(n)),
-             None => ret,
+@@ -684,17 +684,18 @@ impl TcpStream {
          }
      }
  
--    #[cfg(any(target_os = "macos", target_os = "ios"))]
-+    #[cfg(any(target_os = "macos", 
-+              target_os = "ios",
-+              target_os = "bitrig"))]
+     #[cfg(any(target_os = "macos", target_os = "ios"))]
      fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
          setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
                     seconds as libc::c_int)
      }
 -    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+    #[cfg(any(target_os = "freebsd", 
++    #[cfg(any(target_os = "freebsd",
 +              target_os = "dragonfly"))]
      fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
          setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
@@ -1854,17 +1821,7 @@ index 902942d..fa2f6cb 100644
      #[cfg(not(any(target_os = "macos",
                    target_os = "ios",
                    target_os = "freebsd",
--                  target_os = "dragonfly")))]
-+                  target_os = "dragonfly",
-+                  target_os = "bitrig")))]
-     fn set_tcp_keepalive(&mut self, _seconds: uint) -> IoResult<()> {
-         Ok(())
-     }
- 
-     #[cfg(target_os = "linux")]
-     fn lock_nonblocking(&self) {}
- 
-     #[cfg(not(target_os = "linux"))]
+                   target_os = "dragonfly")))]
 diff --git a/src/libstd/sys/common/stack.rs b/src/libstd/sys/common/stack.rs
 index ce5ab67..51f0a93 100644
 --- a/src/libstd/sys/common/stack.rs
