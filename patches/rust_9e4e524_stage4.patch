@@ -461,7 +461,7 @@ index f9027f1..867499b 100644
          for x in self.iter() {
              if is_first {
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index e48272b..d5ac7fc 100644
+index e48272b..13d61ba 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
 @@ -276,30 +276,31 @@ pub use funcs::bsd43::{shutdown};
@@ -732,46 +732,7 @@ index e48272b..d5ac7fc 100644
                  use types::os::arch::extra::{int64, time64_t};
                  use types::os::arch::posix88::{dev_t, ino_t};
  
-@@ -3246,17 +3463,17 @@ pub mod consts {
-             pub const _SC_VERSION : c_int = 25;
-             pub const _SC_RE_DUP_MAX : c_int = 26;
-             pub const _SC_STREAM_MAX : c_int = 27;
-             pub const _SC_TZNAME_MAX : c_int = 28;
-             pub const _SC_PAGESIZE : c_int = 39;
-         }
-     }
- 
--    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig"))]
-     pub mod os {
-         pub mod c95 {
-             use types::os::arch::c95::{c_int, c_uint};
- 
-             pub const EXIT_FAILURE : c_int = 1;
-             pub const EXIT_SUCCESS : c_int = 0;
-             pub const RAND_MAX : c_int = 2147483647;
-             pub const EOF : c_int = -1;
-@@ -3516,16 +3733,19 @@ pub mod consts {
-                           target_arch = "mipsel",
-                           target_arch = "x86",
-                           target_arch = "x86_64")))]
-             pub const PTHREAD_STACK_MIN: size_t = 2048;
- 
-             #[cfg(target_os = "dragonfly")]
-             pub const PTHREAD_STACK_MIN: size_t = 1024;
- 
-+            #[cfg(target_os = "bitrig")]
-+            pub const PTHREAD_STACK_MIN: size_t = 2048;
-+
-             pub const CLOCK_REALTIME: c_int = 0;
-             pub const CLOCK_MONOTONIC: c_int = 4;
-         }
-         pub mod posix08 {
-         }
-         pub mod bsd44 {
-             use types::os::arch::c95::c_int;
- 
-@@ -3596,16 +3816,19 @@ pub mod consts {
+@@ -3596,16 +3813,19 @@ pub mod consts {
              pub const MAP_RENAME : c_int = 0x0020;
              pub const MAP_NORESERVE : c_int = 0x0040;
              pub const MAP_HASSEMAPHORE : c_int = 0x0200;
@@ -791,7 +752,7 @@ index e48272b..d5ac7fc 100644
              pub const _SC_CHILD_MAX : c_int = 2;
              pub const _SC_CLK_TCK : c_int = 3;
              pub const _SC_NGROUPS_MAX : c_int = 4;
-@@ -3655,16 +3878,394 @@ pub mod consts {
+@@ -3655,16 +3875,394 @@ pub mod consts {
              pub const _SC_RTSIG_MAX : c_int = 48;
              pub const _SC_SEM_NSEMS_MAX : c_int = 49;
              pub const _SC_SEM_VALUE_MAX : c_int = 50;
@@ -1186,7 +1147,7 @@ index e48272b..d5ac7fc 100644
              pub const EXIT_FAILURE : c_int = 1;
              pub const EXIT_SUCCESS : c_int = 0;
              pub const RAND_MAX : c_int = 2147483647;
-@@ -4351,44 +4952,47 @@ pub mod funcs {
+@@ -4351,44 +4949,47 @@ pub mod funcs {
          }
      }
  
@@ -1235,7 +1196,7 @@ index e48272b..d5ac7fc 100644
                  #[link_name = "stat64"]
                  pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4571,26 +5175,28 @@ pub mod funcs {
+@@ -4571,26 +5172,28 @@ pub mod funcs {
  
      }
  
@@ -1265,7 +1226,7 @@ index e48272b..d5ac7fc 100644
                  #[link_name = "lstat64"]
                  pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4688,17 +5294,18 @@ pub mod funcs {
+@@ -4688,17 +5291,18 @@ pub mod funcs {
  
  
      #[cfg(any(target_os = "windows",
@@ -1285,7 +1246,7 @@ index e48272b..d5ac7fc 100644
      #[cfg(not(windows))]
      pub mod bsd43 {
          use types::common::c95::{c_void};
-@@ -4774,17 +5381,18 @@ pub mod funcs {
+@@ -4774,17 +5378,18 @@ pub mod funcs {
                            addrlen: c_int) -> c_int;
              pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
          }
@@ -1305,7 +1266,7 @@ index e48272b..d5ac7fc 100644
              pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
              pub fn sysctl(name: *mut c_int,
                            namelen: c_uint,
-@@ -4803,20 +5411,21 @@ pub mod funcs {
+@@ -4803,20 +5408,21 @@ pub mod funcs {
                                     mibp: *mut c_int,
                                     sizep: *mut size_t)
                                     -> c_int;
@@ -1328,7 +1289,7 @@ index e48272b..d5ac7fc 100644
          extern {
              pub fn getdtablesize() -> c_int;
              pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
-@@ -4837,17 +5446,17 @@ pub mod funcs {
+@@ -4837,17 +5443,17 @@ pub mod funcs {
          use types::os::arch::c95::{c_char, c_int};
  
          extern {
