@@ -297,6 +297,36 @@ index 56ebd4f..6eac786 100755
      BIN_SUF=
      LIB_SUF=.dylib
      break
+diff --git a/src/etc/mklldeps.py b/src/etc/mklldeps.py
+index 834ba07..b9575cc 100644
+--- a/src/etc/mklldeps.py
++++ b/src/etc/mklldeps.py
+@@ -53,17 +53,24 @@ version = run([llconfig, '--version']).strip()
+ if version < '3.5':
+     args = [llconfig, '--libs']
+ else:
+     args = [llconfig, '--libs', '--system-libs']
+ 
+ args.extend(components)
+ out = run(args)
+ for lib in out.strip().replace("\n", ' ').split(' '):
+-    lib = lib.strip()[2:] # chop of the leading '-l'
++    # in some cases we get extra spaces in between libs so ignore those
++    if len(lib) == 1 and lib == ' ':
++        continue
++    # not all libs strictly follow -lfoo, on Bitrig, there is -pthread
++    if lib[0:2] == '-l':
++        lib = lib.strip()[2:]
++    elif lib[0] == '-':
++        lib = lib.strip()[1:]
+     f.write("#[link(name = \"" + lib + "\"")
+     # LLVM libraries are all static libraries
+     if 'LLVM' in lib:
+         f.write(", kind = \"static\"")
+     f.write(")]\n")
+ 
+ # llvm-config before 3.5 didn't have a system-libs flag
+ if version < '3.5':
 diff --git a/src/etc/snapshot.py b/src/etc/snapshot.py
 index 8f45f7f..53fc324 100644
 --- a/src/etc/snapshot.py
@@ -461,7 +491,7 @@ index f9027f1..867499b 100644
          for x in self.iter() {
              if is_first {
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index e48272b..13d61ba 100644
+index e48272b..b82686d 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
 @@ -276,30 +276,31 @@ pub use funcs::bsd43::{shutdown};
@@ -752,7 +782,7 @@ index e48272b..13d61ba 100644
              pub const _SC_CHILD_MAX : c_int = 2;
              pub const _SC_CLK_TCK : c_int = 3;
              pub const _SC_NGROUPS_MAX : c_int = 4;
-@@ -3655,16 +3875,394 @@ pub mod consts {
+@@ -3655,16 +3875,393 @@ pub mod consts {
              pub const _SC_RTSIG_MAX : c_int = 48;
              pub const _SC_SEM_NSEMS_MAX : c_int = 49;
              pub const _SC_SEM_VALUE_MAX : c_int = 50;
@@ -1111,31 +1141,30 @@ index e48272b..13d61ba 100644
 +            pub const _SC_STREAM_MAX : c_int = 26;
 +            pub const _SC_TZNAME_MAX : c_int = 27;
 +            pub const _SC_PAGESIZE : c_int = 28;
-+            pub const _SC_ASYNCHRONOUS_IO : c_int = 45;
 +            pub const _SC_FSYNC : c_int = 29;
++            pub const _SC_SEM_NSEMS_MAX : c_int = 31;
++            pub const _SC_SEM_VALUE_MAX : c_int = 32;
++            pub const _SC_AIO_LISTIO_MAX : c_int = 42;
++            pub const _SC_AIO_MAX : c_int = 43;
++            pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
++            pub const _SC_ASYNCHRONOUS_IO : c_int = 45;
++            pub const _SC_DELAYTIMER_MAX : c_int = 50;
++            pub const _SC_MAPPED_FILES : c_int = 53;
 +            pub const _SC_MEMLOCK : c_int = 54;
 +            pub const _SC_MEMLOCK_RANGE : c_int = 55;
 +            pub const _SC_MEMORY_PROTECTION : c_int = 56;
 +            pub const _SC_MESSAGE_PASSING : c_int = 57;
++            pub const _SC_MQ_OPEN_MAX : c_int = 58;
 +            pub const _SC_PRIORITIZED_IO : c_int = 60;
 +            pub const _SC_PRIORITY_SCHEDULING : c_int = 61;
 +            pub const _SC_REALTIME_SIGNALS : c_int = 64;
-+            pub const _SC_SEMAPHORES : c_int = 67;
-+            pub const _SC_FSYNC : c_int = 29;
-+            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 68;
-+            pub const _SC_SYNCHRONIZED_IO : c_int = 75;
-+            pub const _SC_TIMERS : c_int = 94;
-+            pub const _SC_AIO_LISTIO_MAX : c_int = 42;
-+            pub const _SC_AIO_MAX : c_int = 43;
-+            pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
-+            pub const _SC_DELAYTIMER_MAX : c_int = 50;
-+            pub const _SC_MQ_OPEN_MAX : c_int = 58;
-+            pub const _SC_MAPPED_FILES : c_int = 53;
 +            pub const _SC_RTSIG_MAX : c_int = 66;
-+            pub const _SC_SEM_NSEMS_MAX : c_int = 31;
-+            pub const _SC_SEM_VALUE_MAX : c_int = 32;
++            pub const _SC_SEMAPHORES : c_int = 67;
++            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 68;
 +            pub const _SC_SIGQUEUE_MAX : c_int = 70;
++            pub const _SC_SYNCHRONIZED_IO : c_int = 75;
 +            pub const _SC_TIMER_MAX : c_int = 93;
++            pub const _SC_TIMERS : c_int = 94;
 +        }
 +    }
 +
@@ -1147,7 +1176,7 @@ index e48272b..13d61ba 100644
              pub const EXIT_FAILURE : c_int = 1;
              pub const EXIT_SUCCESS : c_int = 0;
              pub const RAND_MAX : c_int = 2147483647;
-@@ -4351,44 +4949,47 @@ pub mod funcs {
+@@ -4351,44 +4948,47 @@ pub mod funcs {
          }
      }
  
@@ -1196,7 +1225,7 @@ index e48272b..13d61ba 100644
                  #[link_name = "stat64"]
                  pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4571,26 +5172,28 @@ pub mod funcs {
+@@ -4571,26 +5171,28 @@ pub mod funcs {
  
      }
  
@@ -1226,7 +1255,7 @@ index e48272b..13d61ba 100644
                  #[link_name = "lstat64"]
                  pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
              }
-@@ -4688,17 +5291,18 @@ pub mod funcs {
+@@ -4688,17 +5290,18 @@ pub mod funcs {
  
  
      #[cfg(any(target_os = "windows",
@@ -1246,7 +1275,7 @@ index e48272b..13d61ba 100644
      #[cfg(not(windows))]
      pub mod bsd43 {
          use types::common::c95::{c_void};
-@@ -4774,17 +5378,18 @@ pub mod funcs {
+@@ -4774,17 +5377,18 @@ pub mod funcs {
                            addrlen: c_int) -> c_int;
              pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
          }
@@ -1266,7 +1295,7 @@ index e48272b..13d61ba 100644
              pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
              pub fn sysctl(name: *mut c_int,
                            namelen: c_uint,
-@@ -4803,20 +5408,21 @@ pub mod funcs {
+@@ -4803,20 +5407,21 @@ pub mod funcs {
                                     mibp: *mut c_int,
                                     sizep: *mut size_t)
                                     -> c_int;
@@ -1289,7 +1318,7 @@ index e48272b..13d61ba 100644
          extern {
              pub fn getdtablesize() -> c_int;
              pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
-@@ -4837,17 +5443,17 @@ pub mod funcs {
+@@ -4837,17 +5442,17 @@ pub mod funcs {
          use types::os::arch::c95::{c_char, c_int};
  
          extern {
