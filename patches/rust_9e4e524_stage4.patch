@@ -491,10 +491,10 @@ index f9027f1..867499b 100644
          for x in self.iter() {
              if is_first {
 diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
-index e48272b..b82686d 100644
+index e48272b..bdc1aff 100644
 --- a/src/liblibc/lib.rs
 +++ b/src/liblibc/lib.rs
-@@ -276,30 +276,31 @@ pub use funcs::bsd43::{shutdown};
+@@ -276,33 +276,34 @@ pub use funcs::bsd43::{shutdown};
  #[cfg(windows)] pub use funcs::extra::kernel32::{DisconnectNamedPipe, OpenProcess};
  #[cfg(windows)] pub use funcs::extra::kernel32::{MoveFileExW, VirtualProtect};
  #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
@@ -519,16 +519,19 @@ index e48272b..b82686d 100644
 +#[cfg(all(unix, not(any(target_os = "freebsd", target_os = "bitrig"))))]
  pub use consts::os::extra::{MAP_STACK};
  
--#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-+#[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig"))]
+ #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
  pub use consts::os::bsd44::{TCP_KEEPIDLE};
  
- #[cfg(any(target_os = "macos", target_os = "ios"))]
+-#[cfg(any(target_os = "macos", target_os = "ios"))]
++#[cfg(any(target_os = "macos", target_os = "ios", target_os = "bitrig"))]
  pub use consts::os::bsd44::{TCP_KEEPALIVE};
  #[cfg(any(target_os = "macos", target_os = "ios"))]
  pub use consts::os::extra::{F_FULLFSYNC};
  
  #[cfg(any(target_os = "macos", target_os = "ios"))]
+ pub use types::os::arch::extra::{mach_timebase_info};
+ 
+ 
 @@ -1326,16 +1327,232 @@ pub mod types {
              }
              pub mod bsd44 {
