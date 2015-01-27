@@ -1747,10 +1747,10 @@ index 902942d..af3b3ca 100644
                    target_os = "freebsd",
                    target_os = "dragonfly")))]
 diff --git a/src/libstd/sys/common/stack.rs b/src/libstd/sys/common/stack.rs
-index ce5ab67..b2043a6 100644
+index ce5ab67..d52dc4d 100644
 --- a/src/libstd/sys/common/stack.rs
 +++ b/src/libstd/sys/common/stack.rs
-@@ -184,21 +184,30 @@ pub unsafe fn record_sp_limit(limit: uint) {
+@@ -184,21 +184,28 @@ pub unsafe fn record_sp_limit(limit: uint) {
      }
      #[cfg(all(target_arch = "x86_64", target_os = "windows"))] #[inline(always)]
      unsafe fn target_record_sp_limit(_: uint) {
@@ -1766,13 +1766,11 @@ index ce5ab67..b2043a6 100644
          asm!("movq $0, %fs:32" :: "r"(limit) :: "volatile")
      }
  
-+    /*
 +    #[cfg(target_os = "bitrig")]
 +    #[inline(always)]
 +    unsafe fn target_record_sp_limit(_: uint) {
 +        // segmented stacks are disabled
 +    }
-+    */
 +
      // x86
      #[cfg(all(target_arch = "x86",
@@ -1782,7 +1780,7 @@ index ce5ab67..b2043a6 100644
          asm!("movl $$0x48+90*4, %eax
                movl $0, %gs:(%eax)" :: "r"(limit) : "eax" : "volatile")
      }
-@@ -270,22 +279,28 @@ pub unsafe fn get_sp_limit() -> uint {
+@@ -270,22 +277,28 @@ pub unsafe fn get_sp_limit() -> uint {
          return 1024;
      }
      #[cfg(all(target_arch = "x86_64", target_os = "freebsd"))] #[inline(always)]
