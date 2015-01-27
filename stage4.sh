@@ -87,7 +87,8 @@ bitrig_configure(){
 
   # configure rust
   cd ${TOP}/rust
-  ./configure --disable-optimize --disable-docs --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  #./configure --disable-optimize --disable-docs --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  ./configure --disable-docs --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
   if (( $? )); then
     echo "Failed to configure rust"
     exit 1
