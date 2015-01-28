@@ -107,29 +107,6 @@ index 0000000..ad34988
 +CFG_RUN_x86_64-unknown-bitrig=$(2)
 +CFG_RUN_TARG_x86_64-unknown-bitrig=$(call CFG_RUN_x86_64-unknown-bitrig,,$(2))
 +CFG_GNU_TRIPLE_x86_64-unknown-bitrig := x86_64-unknown-bitrig
-diff --git a/mk/main.mk b/mk/main.mk
-index a97e68a..c2d145e 100644
---- a/mk/main.mk
-+++ b/mk/main.mk
-@@ -394,17 +394,17 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
- ifeq ($(1),0)
- # Don't run the stage0 compiler under valgrind - that ship has sailed
- CFG_VALGRIND_COMPILE$(1) =
- else
- CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
- endif
- 
- # Add RUSTFLAGS_STAGEN values to the build command
--EXTRAFLAGS_STAGE$(1) = $$(RUSTFLAGS_STAGE$(1))
-+EXTRAFLAGS_STAGE$(1) = --sysroot $$(HROOT$(1)_H_$(3)) $$(RUSTFLAGS_STAGE$(1))
- 
- CFGFLAG$(1)_T_$(2)_H_$(3) = stage$(1)
- 
- endef
- 
- # Same macro/variables as above, but defined in a separate loop so it can use
- # all the variables above for all archs. The RPATH_VAR setup sometimes needs to
- # reach across triples to get things in order.
 diff --git a/mk/platform.mk b/mk/platform.mk
 index 50bf51b..ecfe451 100644
 --- a/mk/platform.mk
@@ -205,29 +182,6 @@ index 50bf51b..ecfe451 100644
  
  $(foreach target,$(CFG_TARGET), \
    $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))
-diff --git a/mk/tests.mk b/mk/tests.mk
-index 714a9f8..b5e9ef4 100644
---- a/mk/tests.mk
-+++ b/mk/tests.mk
-@@ -589,17 +589,17 @@ define DEF_CTEST_VARS
- TEST_SREQ$(1)_T_$(2)_H_$(3) = \
- 	$$(HBIN$(1)_H_$(3))/compiletest$$(X_$(3)) \
- 	$$(SREQ$(1)_T_$(2)_H_$(3))
- 
- # Rules for the cfail/rfail/rpass/bench/perf test runner
- 
- # The tests select when to use debug configuration on their own;
- # remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
--CTEST_RUSTC_FLAGS := $$(subst --cfg ndebug,,$$(CFG_RUSTC_FLAGS))
-+CTEST_RUSTC_FLAGS := --sysroot $$(HROOT$(1)_H_$(3)) $$(subst --cfg ndebug,,$$(CFG_RUSTC_FLAGS))
- 
- # The tests cannot be optimized while the rest of the compiler is optimized, so
- # filter out the optimization (if any) from rustc and then figure out if we need
- # to be optimized
- CTEST_RUSTC_FLAGS := $$(subst -O,,$$(CTEST_RUSTC_FLAGS))
- ifndef CFG_DISABLE_OPTIMIZE_TESTS
- CTEST_RUSTC_FLAGS += -O
- endif
 diff --git a/src/compiletest/util.rs b/src/compiletest/util.rs
 index a116cc3..f4050f7 100644
 --- a/src/compiletest/util.rs
@@ -447,6 +401,36 @@ index 59418f5..507703c 100644
          buf.shrink_to_fit();
          buf
      }
+diff --git a/src/libcollections/vec.rs b/src/libcollections/vec.rs
+index 5fc3faf..312d739 100644
+--- a/src/libcollections/vec.rs
++++ b/src/libcollections/vec.rs
+@@ -1449,25 +1449,16 @@ impl<T> Default for Vec<T> {
+ 
+ #[experimental = "waiting on Show stability"]
+ impl<T: fmt::Show> fmt::Show for Vec<T> {
+     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+         fmt::Show::fmt(self.as_slice(), f)
+     }
+ }
+ 
+-#[cfg(stage0)]
+-#[experimental = "waiting on Show stability"]
+-impl<T: fmt::Show> fmt::String for Vec<T> {
+-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+-        fmt::String::fmt(self.as_slice(), f)
+-    }
+-}
+-
+-#[cfg(not(stage0))]
+ #[experimental = "waiting on Show stability"]
+ impl<T: fmt::String> fmt::String for Vec<T> {
+     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+         fmt::String::fmt(self.as_slice(), f)
+     }
+ }
+ 
+ impl<'a> fmt::Writer for Vec<u8> {
 diff --git a/src/libcore/fmt/mod.rs b/src/libcore/fmt/mod.rs
 index f9027f1..867499b 100644
 --- a/src/libcore/fmt/mod.rs
@@ -2311,7 +2295,7 @@ index c82da57..cf2b9b9 100644
  
  #ifdef __ELF__
 diff --git a/src/rt/rust_builtin.c b/src/rt/rust_builtin.c
-index 5dc07f8..0238be7 100644
+index 5dc07f8..42a5b45 100644
 --- a/src/rt/rust_builtin.c
 +++ b/src/rt/rust_builtin.c
 @@ -65,17 +65,17 @@ timegm(struct tm *tm)
@@ -2333,7 +2317,7 @@ index 5dc07f8..0238be7 100644
  rust_env_pairs() {
      return 0;
  }
-@@ -332,16 +332,58 @@ rust_unset_sigprocmask() {
+@@ -332,16 +332,85 @@ rust_unset_sigprocmask() {
  
  #if defined(__DragonFly__)
  #include <errno.h>
@@ -2352,32 +2336,59 @@ index 5dc07f8..0238be7 100644
 +  static char *self = NULL;
 +  if (self == NULL) {
 +    int mib[4];
-+    char **argv = NULL;
-+    size_t argv_len;
++    char *eq = NULL;
++    char *key = NULL;
++    char **menv = NULL;
++    size_t len;
++    int nenv = 0;
++    int i;
 +
 +    /* initialize mib */
 +    mib[0] = CTL_KERN;
 +    mib[1] = KERN_PROC_ARGS;
 +    mib[2] = getpid();
-+    mib[3] = KERN_PROC_ARGV;
++    mib[3] = KERN_PROC_ENV;
 +
-+    /* request KERN_PROC_ARGV size */
-+    argv_len = 0;
-+    if (sysctl(mib, 4, NULL, &argv_len, NULL, 0) == -1)
++    /* request number of bytes needed for env */
++    len = 0;
++    if (sysctl(mib, 4, NULL, &len, NULL, 0) == -1)
 +      return NULL;
 +
 +    /* allocate buffer to receive the values */
-+    if ((argv = malloc(argv_len)) == NULL)
++    if ((menv = malloc(len)) == NULL)
 +      return NULL;
 +
-+    /* request the realpath if possible */
-+    if ((argv[0] != NULL) && ((*argv[0] == '.') || (*argv[0] == '/') || (strstr(argv[0], "/") != NULL)))
-+      self = realpath(argv[0], NULL);
-+    else
-+      self = NULL;
++    /* get the env array */
++    if (sysctl(mib, 4, menv, &len, NULL, 0) == -1)
++    {
++      free(menv);
++      return NULL;
++    }
++
++    /* get the number of items in the env array */
++    mib[3] = KERN_PROC_NENV;
++    len = sizeof(int);
++    if (sysctl(mib, 4, &nenv, &len, NULL, 0) == -1)
++    {
++      free(menv);
++      return NULL;
++    }
++
++    /* find '_' key and resolve the value */
++    for (i = 0; i < nenv; i++)
++    {
++      if ((eq = strstr(menv[i], "=")) == NULL)
++        continue;
++      key = menv[i];
++      if (((eq - key) == 1) && (*key == '_'))
++      {
++        self = realpath(eq + 1, NULL);
++        break;
++      }
++    }
 +
 +    /* cleanup */
-+    free(argv);
++    free(menv);
 +  }
 +
 +  return self;
