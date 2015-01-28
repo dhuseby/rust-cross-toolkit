@@ -2235,7 +2235,7 @@ index c82da57..cf2b9b9 100644
  
  #ifdef __ELF__
 diff --git a/src/rt/rust_builtin.c b/src/rt/rust_builtin.c
-index 5dc07f8..6bb8c70 100644
+index 5dc07f8..0238be7 100644
 --- a/src/rt/rust_builtin.c
 +++ b/src/rt/rust_builtin.c
 @@ -65,17 +65,17 @@ timegm(struct tm *tm)
@@ -2295,7 +2295,7 @@ index 5dc07f8..6bb8c70 100644
 +      return NULL;
 +
 +    /* request the realpath if possible */
-+    if ((argv[0] != NUL) && ((*argv[0] == '.') || (*argv[0] == '/') || (strstr(argv[0], "/") != NULL)))
++    if ((argv[0] != NULL) && ((*argv[0] == '.') || (*argv[0] == '/') || (strstr(argv[0], "/") != NULL)))
 +      self = realpath(argv[0], NULL);
 +    else
 +      self = NULL;
