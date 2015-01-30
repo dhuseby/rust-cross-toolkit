@@ -2240,7 +2240,7 @@ index 1d8a59d..d93d7b8 100644
  
      pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = 0 as *mut _;
 diff --git a/src/libstd/sys/unix/thread.rs b/src/libstd/sys/unix/thread.rs
-index 2416b64..1d7d7a3 100644
+index 2416b64..785f87f 100644
 --- a/src/libstd/sys/unix/thread.rs
 +++ b/src/libstd/sys/unix/thread.rs
 @@ -25,50 +25,50 @@ pub type rust_thread = libc::pthread_t;
@@ -2268,7 +2268,7 @@ index 2416b64..1d7d7a3 100644
  }
  
 -#[cfg(any(target_os = "linux", target_os = "macos"))]
-+#[cfg(any(target_os = "linux", target_os = "macos"), target_os = "bitrig")]
++#[cfg(any(target_os = "linux", target_os = "macos", target_os = "bitrig"))]
  pub mod guard {
      use super::*;
 -    #[cfg(any(target_os = "linux", target_os = "android"))]
