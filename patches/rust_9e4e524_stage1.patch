@@ -323,7 +323,7 @@ index 8f45f7f..53fc324 100644
      return arch
  
 diff --git a/src/libbacktrace/configure b/src/libbacktrace/configure
-index f4f9d05..1d495bb 100755
+index f4f9d05..356e82b 100755
 --- a/src/libbacktrace/configure
 +++ b/src/libbacktrace/configure
 @@ -5645,17 +5645,17 @@ else
@@ -345,6 +345,25 @@ index f4f9d05..1d495bb 100755
      else
        lt_cv_sys_max_cmd_len=65536	# usable default for all BSDs
      fi
+@@ -9327,17 +9327,17 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
+     freebsd2.*)
+       archive_cmds='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'
+       hardcode_direct=yes
+       hardcode_minus_L=yes
+       hardcode_shlibpath_var=no
+       ;;
+ 
+     # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
+-    freebsd* | dragonfly*)
++    freebsd* | dragonfly* | bitrig*)
+       archive_cmds='$CC -shared -o $lib $libobjs $deplibs $compiler_flags'
+       hardcode_libdir_flag_spec='-R$libdir'
+       hardcode_direct=yes
+       hardcode_shlibpath_var=no
+       ;;
+ 
+     hpux9*)
+       if test "$GCC" = yes; then
 diff --git a/src/libbacktrace/ltmain.sh b/src/libbacktrace/ltmain.sh
 index 9503ec8..eaef55a 100644
 --- a/src/libbacktrace/ltmain.sh
@@ -1764,6 +1783,30 @@ index ce5ab67..d52dc4d 100644
      #[inline(always)]
      unsafe fn target_get_sp_limit() -> uint {
          let limit;
+diff --git a/src/libstd/sys/unix/backtrace.rs b/src/libstd/sys/unix/backtrace.rs
+index 7164931..bd5543d 100644
+--- a/src/libstd/sys/unix/backtrace.rs
++++ b/src/libstd/sys/unix/backtrace.rs
+@@ -313,17 +313,18 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
+     //
+     // FIXME: We also call self_exe_name() on DragonFly BSD. I haven't
+     //        tested if this is required or not.
+     unsafe fn init_state() -> *mut backtrace_state {
+         static mut STATE: *mut backtrace_state = 0 as *mut backtrace_state;
+         static mut LAST_FILENAME: [libc::c_char; 256] = [0; 256];
+         if !STATE.is_null() { return STATE }
+         let selfname = if cfg!(target_os = "freebsd") ||
+-                          cfg!(target_os = "dragonfly") {
++                          cfg!(target_os = "dragonfly") ||
++                          cfg!(target_os = "bitrig") {
+             os::self_exe_name()
+         } else {
+             None
+         };
+         let filename = match selfname {
+             Some(path) => {
+                 let bytes = path.as_vec();
+                 if bytes.len() < LAST_FILENAME.len() {
 diff --git a/src/libstd/sys/unix/c.rs b/src/libstd/sys/unix/c.rs
 index cc66187..9f38068 100644
 --- a/src/libstd/sys/unix/c.rs
@@ -2067,6 +2110,110 @@ index 1357bbd..46800d0 100644
  
      if imp::WIFEXITED(status) {
          ExitStatus(imp::WEXITSTATUS(status) as int)
+diff --git a/src/libstd/sys/unix/stack_overflow.rs b/src/libstd/sys/unix/stack_overflow.rs
+index 1fd619a..3fd0095 100644
+--- a/src/libstd/sys/unix/stack_overflow.rs
++++ b/src/libstd/sys/unix/stack_overflow.rs
+@@ -27,17 +27,17 @@ impl Handler {
+ impl Drop for Handler {
+     fn drop(&mut self) {
+         unsafe {
+             drop_handler(self);
+         }
+     }
+ }
+ 
+-#[cfg(any(target_os = "linux", target_os = "macos"))]
++#[cfg(any(target_os = "linux", target_os = "macos", target_os = "bitrig"))]
+ mod imp {
+     use core::prelude::*;
+     use sys_common::stack;
+ 
+     use super::Handler;
+     use rt::util::report_overflow;
+     use mem;
+     use ptr;
+@@ -197,44 +197,59 @@ mod imp {
+         pub struct sigaltstack {
+             pub ss_sp: *mut libc::c_void,
+             pub ss_flags: libc::c_int,
+             pub ss_size: libc::size_t
+         }
+ 
+     }
+ 
+-    #[cfg(target_os = "macos")]
++    #[cfg(any(target_os = "macos", target_os = "bitrig"))]
+     mod signal {
+         use libc;
+         use super::sighandler_t;
+ 
+         pub const SA_ONSTACK: libc::c_int = 0x0001;
+         pub const SA_SIGINFO: libc::c_int = 0x0040;
+         pub const SIGBUS: libc::c_int = 10;
+ 
++        #[cfg(target_os = "macos")]
+         pub const SIGSTKSZ: libc::size_t = 131072;
+ 
++        #[cfg(target_os = "bitrig")]
++        pub const SIGSTKSZ: libc::size_t = 40960;
++
+         pub const SIG_DFL: sighandler_t = 0i as sighandler_t;
+ 
+         pub type sigset_t = u32;
+ 
+         // This structure has more fields, but we're not all that interested in
+         // them.
++        #[cfg(target_os = "macos")]
+         #[repr(C)]
+         pub struct siginfo {
+             pub si_signo: libc::c_int,
+             pub si_errno: libc::c_int,
+             pub si_code: libc::c_int,
+             pub pid: libc::pid_t,
+             pub uid: libc::uid_t,
+             pub status: libc::c_int,
+             pub si_addr: *mut libc::c_void
+         }
+ 
++        #[cfg(target_os = "bitrig")]
++        #[repr(C)]
++        pub struct siginfo {
++            pub si_signo: libc::c_int,
++            pub si_code: libc::c_int,
++            pub si_errno: libc::c_int,
++            //union
++            pub si_addr: *mut libc::c_void
++        }
++
+         #[repr(C)]
+         pub struct sigaltstack {
+             pub ss_sp: *mut libc::c_void,
+             pub ss_size: libc::size_t,
+             pub ss_flags: libc::c_int
+         }
+ 
+         #[repr(C)]
+@@ -254,17 +269,18 @@ mod imp {
+                          oldact: *mut sigaction) -> libc::c_int;
+ 
+         pub fn sigaltstack(ss: *const sigaltstack,
+                            oss: *mut sigaltstack) -> libc::c_int;
+     }
+ }
+ 
+ #[cfg(not(any(target_os = "linux",
+-              target_os = "macos")))]
++              target_os = "macos",
++              target_os = "bitrig")))]
+ mod imp {
+     use libc;
+ 
+     pub unsafe fn init() {
+     }
+ 
+     pub unsafe fn cleanup() {
+     }
 diff --git a/src/libstd/sys/unix/sync.rs b/src/libstd/sys/unix/sync.rs
 index 1d8a59d..d93d7b8 100644
 --- a/src/libstd/sys/unix/sync.rs
@@ -2092,6 +2239,163 @@ index 1d8a59d..d93d7b8 100644
      pub type pthread_rwlock_t = *mut libc::c_void;
  
      pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = 0 as *mut _;
+diff --git a/src/libstd/sys/unix/thread.rs b/src/libstd/sys/unix/thread.rs
+index 2416b64..1d7d7a3 100644
+--- a/src/libstd/sys/unix/thread.rs
++++ b/src/libstd/sys/unix/thread.rs
+@@ -25,50 +25,50 @@ pub type rust_thread = libc::pthread_t;
+ pub type rust_thread_return = *mut u8;
+ pub type StartFn = extern "C" fn(*mut libc::c_void) -> rust_thread_return;
+ 
+ #[no_stack_check]
+ pub extern fn thread_start(main: *mut libc::c_void) -> rust_thread_return {
+     return start_thread(main);
+ }
+ 
+-#[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
++#[cfg(all(not(target_os = "linux"), not(target_os = "macos"), not(target_os = "bitrig")))]
+ pub mod guard {
+     pub unsafe fn current() -> uint {
+         0
+     }
+ 
+     pub unsafe fn main() -> uint {
+         0
+     }
+ 
+     pub unsafe fn init() {
+     }
+ }
+ 
+-#[cfg(any(target_os = "linux", target_os = "macos"))]
++#[cfg(any(target_os = "linux", target_os = "macos"), target_os = "bitrig")]
+ pub mod guard {
+     use super::*;
+-    #[cfg(any(target_os = "linux", target_os = "android"))]
++    #[cfg(any(target_os = "linux", target_os = "android", target_os = "bitrig"))]
+     use mem;
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     use ptr;
+     use libc;
+     use libc::funcs::posix88::mman::{mmap};
+     use libc::consts::os::posix88::{PROT_NONE,
+                                     MAP_PRIVATE,
+                                     MAP_ANON,
+                                     MAP_FAILED,
+                                     MAP_FIXED};
+ 
+     // These are initialized in init() and only read from after
+     static mut PAGE_SIZE: uint = 0;
+     static mut GUARD_PAGE: uint = 0;
+ 
+-    #[cfg(target_os = "macos")]
++    #[cfg(any(target_os = "macos", target_os = "bitrig"))]
+     unsafe fn get_stack_start() -> *mut libc::c_void {
+         current() as *mut libc::c_void
+     }
+ 
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     unsafe fn get_stack_start() -> *mut libc::c_void {
+         let mut attr: libc::pthread_attr_t = mem::zeroed();
+         if pthread_getattr_np(pthread_self(), &mut attr) != 0 {
+@@ -147,16 +147,32 @@ pub mod guard {
+             panic!("failed to get stack information");
+         }
+         if pthread_attr_destroy(&mut attr) != 0 {
+             panic!("failed to destroy thread attributes");
+         }
+ 
+         stackaddr as uint + guardsize as uint
+     }
++
++    #[cfg(target_os = "bitrig")]
++    pub unsafe fn current() -> uint {
++      let mut current_stack: stack_t = mem::zeroed();
++      if pthread_stackseg_np(pthread_self(), &mut current_stack) != 0 {
++        panic!("failed to get current stack: pthread_stackseg_np")
++      }
++
++      if pthread_main_np() == 1 {
++        // main thread
++        current_stack.ss_sp as uint - current_stack.ss_size as uint + 3 * PAGE_SIZE as uint
++      } else {
++        // new thread
++        current_stack.ss_sp as uint - current_stack.ss_size as uint
++      }
++    }
+ }
+ 
+ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
+     let mut native: libc::pthread_t = mem::zeroed();
+     let mut attr: libc::pthread_attr_t = mem::zeroed();
+     assert_eq!(pthread_attr_init(&mut attr), 0);
+     assert_eq!(pthread_attr_setdetachstate(&mut attr,
+                                            PTHREAD_CREATE_JOINABLE), 0);
+@@ -248,16 +264,32 @@ extern {
+ 
+ #[cfg(target_os = "macos")]
+ extern {
+     pub fn pthread_self() -> libc::pthread_t;
+     pub fn pthread_get_stackaddr_np(thread: libc::pthread_t) -> *mut libc::c_void;
+     pub fn pthread_get_stacksize_np(thread: libc::pthread_t) -> libc::size_t;
+ }
+ 
++#[cfg(target_os = "bitrig")]
++extern {
++  pub fn pthread_self() -> libc::pthread_t;
++  pub fn pthread_stackseg_np(thread: libc::pthread_t,
++                             sinfo: *mut stack_t) -> libc::c_uint;
++  pub fn pthread_main_np() -> libc::c_uint;
++}
++
++#[cfg(target_os = "bitrig")]
++#[repr(C)]
++pub struct stack_t {
++  pub ss_sp: *mut libc::c_void,
++  pub ss_size: libc::size_t,
++  pub ss_flags: libc::c_int,
++}
++
+ extern {
+     fn pthread_create(native: *mut libc::pthread_t,
+                       attr: *const libc::pthread_attr_t,
+                       f: StartFn,
+                       value: *mut libc::c_void) -> libc::c_int;
+     fn pthread_join(native: libc::pthread_t,
+                     value: *mut *mut libc::c_void) -> libc::c_int;
+     fn pthread_attr_init(attr: *mut libc::pthread_attr_t) -> libc::c_int;
+diff --git a/src/libstd/sys/unix/thread_local.rs b/src/libstd/sys/unix/thread_local.rs
+index ea1e9c2..66d9622 100644
+--- a/src/libstd/sys/unix/thread_local.rs
++++ b/src/libstd/sys/unix/thread_local.rs
+@@ -37,23 +37,25 @@ pub unsafe fn destroy(key: Key) {
+     debug_assert_eq!(r, 0);
+ }
+ 
+ #[cfg(any(target_os = "macos",
+           target_os = "ios"))]
+ type pthread_key_t = ::libc::c_ulong;
+ 
+ #[cfg(any(target_os = "freebsd",
+-          target_os = "dragonfly"))]
++          target_os = "dragonfly",
++          target_os = "bitrig"))]
+ type pthread_key_t = ::libc::c_int;
+ 
+ #[cfg(not(any(target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+-              target_os = "dragonfly")))]
++              target_os = "dragonfly",
++              target_os = "bitrig")))]
+ type pthread_key_t = ::libc::c_uint;
+ 
+ extern {
+     fn pthread_key_create(key: *mut pthread_key_t,
+                           dtor: Option<unsafe extern fn(*mut u8)>) -> c_int;
+     fn pthread_key_delete(key: pthread_key_t) -> c_int;
+     fn pthread_getspecific(key: pthread_key_t) -> *mut u8;
+     fn pthread_setspecific(key: pthread_key_t, value: *mut u8) -> c_int;
 diff --git a/src/libstd/time/mod.rs b/src/libstd/time/mod.rs
 index d6c94f2..b10ee1a 100644
 --- a/src/libstd/time/mod.rs
@@ -2189,7 +2493,7 @@ index c82da57..cf2b9b9 100644
  
  #ifdef __ELF__
 diff --git a/src/rt/rust_builtin.c b/src/rt/rust_builtin.c
-index 5dc07f8..42a5b45 100644
+index 5dc07f8..5286ad7 100644
 --- a/src/rt/rust_builtin.c
 +++ b/src/rt/rust_builtin.c
 @@ -65,17 +65,17 @@ timegm(struct tm *tm)
@@ -2202,7 +2506,7 @@ index 5dc07f8..42a5b45 100644
  #endif
  
 -#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__)
-+#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__) || (__Bitrig__)
++#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__) || defined(__Bitrig__)
  extern char **environ;
  #endif
  
@@ -2211,7 +2515,7 @@ index 5dc07f8..42a5b45 100644
  rust_env_pairs() {
      return 0;
  }
-@@ -332,16 +332,85 @@ rust_unset_sigprocmask() {
+@@ -332,16 +332,292 @@ rust_unset_sigprocmask() {
  
  #if defined(__DragonFly__)
  #include <errno.h>
@@ -2221,72 +2525,279 @@ index 5dc07f8..42a5b45 100644
  #endif
  
 +#if defined(__Bitrig__)
-+//NOTE: borrowed from semarie's openbsd patch (http://bit.ly/1thduJm)
 +#include <sys/param.h>
 +#include <sys/sysctl.h>
 +#include <limits.h>
 +
-+const char * __load_self() {
-+  static char *self = NULL;
-+  if (self == NULL) {
-+    int mib[4];
-+    char *eq = NULL;
-+    char *key = NULL;
-+    char **menv = NULL;
-+    size_t len;
-+    int nenv = 0;
-+    int i;
++int __get_path(void *p, size_t* sz)
++{
++  int mib[4];
++  char *eq = NULL;
++  char *key = NULL;
++  char *val = NULL;
++  char **menv = NULL;
++  size_t maxlen, len;
++  int nenv = 0;
++  int i, ret;
 +
-+    /* initialize mib */
-+    mib[0] = CTL_KERN;
-+    mib[1] = KERN_PROC_ARGS;
-+    mib[2] = getpid();
-+    mib[3] = KERN_PROC_ENV;
++  if ((p == NULL) && (sz == NULL))
++    return -1;
 +
-+    /* request number of bytes needed for env */
-+    len = 0;
-+    if (sysctl(mib, 4, NULL, &len, NULL, 0) == -1)
-+      return NULL;
++  /* get the argv array */
++  mib[0] = CTL_KERN;
++  mib[1] = KERN_PROC_ARGS;
++  mib[2] = getpid();
++  mib[3] = KERN_PROC_ENV;
 +
-+    /* allocate buffer to receive the values */
-+    if ((menv = malloc(len)) == NULL)
-+      return NULL;
++  /* get the number of bytes needed to get the env */
++  maxlen = 0;
++  if (sysctl(mib, 4, NULL, &maxlen, NULL, 0) == -1)
++    return -1;
 +
-+    /* get the env array */
-+    if (sysctl(mib, 4, menv, &len, NULL, 0) == -1)
-+    {
-+      free(menv);
-+      return NULL;
-+    }
++  /* allocate the buffer */
++  if ((menv = calloc(maxlen, sizeof(char))) == NULL)
++    return -1;
 +
-+    /* get the number of items in the env array */
-+    mib[3] = KERN_PROC_NENV;
-+    len = sizeof(int);
-+    if (sysctl(mib, 4, &nenv, &len, NULL, 0) == -1)
-+    {
-+      free(menv);
-+      return NULL;
-+    }
-+
-+    /* find '_' key and resolve the value */
-+    for (i = 0; i < nenv; i++)
-+    {
-+      if ((eq = strstr(menv[i], "=")) == NULL)
-+        continue;
-+      key = menv[i];
-+      if (((eq - key) == 1) && (*key == '_'))
-+      {
-+        self = realpath(eq + 1, NULL);
-+        break;
-+      }
-+    }
-+
-+    /* cleanup */
++  /* get the env array */
++  if (sysctl(mib, 4, menv, &maxlen, NULL, 0) == -1)
++  {
 +    free(menv);
++    return -1;
 +  }
 +
-+  return self;
++  mib[3] = KERN_PROC_NENV;
++  len = sizeof(int);
++  /* get the length of env array */
++  if (sysctl(mib, 4, &nenv, &len, NULL, 0) == -1)
++  {
++    free(menv);
++    return -1;
++  }
++
++  /* find _ key and resolve the value */
++  for (i = 0; i < nenv; i++)
++  {
++    if ((eq = strstr(menv[i], "=")) == NULL)
++      continue;
++
++    key = menv[i];
++    val = eq + 1;
++    *eq = '\0';
++
++    if (strncmp(key, "PATH", maxlen) != 0)
++      continue;
++
++    if (p == NULL)
++    {
++      /* return the length of the value + NUL */
++      *sz = strnlen(val, maxlen) + 1;
++      free(menv);
++      return 0;
++    }
++    else
++    {
++      /* copy *sz bytes to the output buffer */
++      memcpy(p, val, *sz);
++      free(menv);
++      return 0;
++    }
++  }
++
++  free(menv);
++  return -1;
 +}
++
++int __get_path_array(void * p, size_t * sz)
++{
++  char *path, *str;
++  char **buf;
++  int i, num;
++  size_t len;
++
++  if ((p == NULL) && (sz == NULL))
++    return -1;
++
++  /* get the length of the PATH value */
++  if (__get_path(NULL, &len) == -1)
++    return -1;
++
++  if (len == 0)
++    return -1;
++
++  /* allocate the buffer */
++  if ((path = calloc(len, sizeof(char))) == NULL)
++    return -1;
++
++  /* get the PATH value */
++  if (__get_path(path, &len) == -1)
++  {
++    free(path);
++    return -1;
++  }
++
++  /* count the number of parts in the PATH */
++  num = 1;
++  for(str = path; *str != '\0'; str++)
++  {
++    if (*str == ':')
++      num++;
++  }
++
++  /* calculate the size of the buffer for the 2D array */
++  len = (num * sizeof(char*) + 1) + strlen(path) + 1;
++
++  if (p == NULL)
++  {
++    free(path);
++    *sz = len;
++    return 0;
++  }
++
++  /* make sure we have enough buffer space */
++  if (*sz < len)
++  {
++    free(path);
++    return -1;
++  }
++
++  /* zero out the buffer */
++  buf = (char**)p;
++  memset(buf, 0, *sz);
++
++  /* copy the data into the right place */
++  str = p + ((num+1) * sizeof(char*));
++  memcpy(str, path, strlen(path));
++
++  /* parse the path into it's parts */
++  for (i = 0; i < num && (buf[i] = strsep(&str, ":")) != NULL; i++) {;}
++  buf[num] = NULL;
++
++  free(path);
++  return 0;
++}
++
++int __get_argv_zero(void* p, size_t* sz)
++{
++  int mib[4];
++  char **argv = NULL;
++  size_t len;
++
++  if ((p == NULL) && (sz == NULL))
++    return -1;
++
++  /* get the argv array */
++  mib[0] = CTL_KERN;
++  mib[1] = KERN_PROC_ARGS;
++  mib[2] = getpid();
++  mib[3] = KERN_PROC_ARGV;
++
++  /* request KERN_PROC_ARGV size */
++  len = 0;
++  if (sysctl(mib, 4, NULL, &len, NULL, 0) == -1)
++    return -1;
++
++  /* allocate buffer to receive the values */
++  if ((argv = malloc(len)) == NULL)
++    return -1;
++
++  /* get the argv array */
++  if (sysctl(mib, 4, argv, &len, NULL, 0) == -1)
++  {
++    free(argv);
++    return -1;
++  }
++
++  /* get length of argv[0] */
++  len = strnlen(argv[0], len) + 1;
++
++  if (p == NULL)
++  {
++    *sz = len;
++    free(argv);
++    return 0;
++  }
++
++  if (*sz < len)
++  {
++    free(argv);
++    return -1;
++  }
++
++  memset(p, 0, len);
++  memcpy(p, argv[0], len);
++  free(argv);
++  return 0;
++}
++
++const char * __load_self()
++{
++  static char *self = NULL;
++  char *argv0;
++  char **paths;
++  char *path;
++  size_t sz;
++  int i;
++  char buf[2*PATH_MAX], exe[2*PATH_MAX];
++
++  if (self != NULL)
++    return self;
++
++  if (__get_argv_zero(NULL, &sz) == -1)
++    return NULL;
++  if ((argv0 = calloc(sz, sizeof(char))) == NULL)
++    return NULL;
++  if (__get_argv_zero(argv0, &sz) == -1)
++  {
++    free(argv0);
++    return NULL;
++  }
++
++  /* if argv0 is a relative or absolute path, resolve it with realpath */
++  if ((*argv0 == '.') || (*argv0 == '/') || (strstr(argv0, "/") != NULL))
++  {
++    self = realpath(argv0, NULL);
++    free(argv0);
++    return self;
++  }
++
++  /* get the path array */
++  if (__get_path_array(NULL, &sz) == -1)
++  {
++    free(argv0);
++    return NULL;
++  }
++  if ((paths = calloc(sz, sizeof(char))) == NULL)
++  {
++    free(argv0);
++    return NULL;
++  }
++  if (__get_path_array(paths, &sz) == -1)
++  {
++    free(argv0);
++    free(paths);
++    return NULL;
++  }
++
++  for(i = 0; paths[i] != NULL; i++)
++  {
++    snprintf(buf, 2*PATH_MAX, "%s/%s", paths[i], argv0);
++    if (realpath(buf, exe) == NULL)
++      continue;
++
++    if (access(exe, F_OK | X_OK) == -1)
++      continue;
++
++    self = strdup(exe);
++    free(argv0);
++    free(paths);
++    return self;
++  }
++
++  free(argv0);
++  free(paths);
++  return NULL;
++}
++
 +#endif
 +
  //
