@@ -2599,7 +2599,7 @@ index c82da57..cf2b9b9 100644
  
  #ifdef __ELF__
 diff --git a/src/rt/rust_builtin.c b/src/rt/rust_builtin.c
-index 5dc07f8..5286ad7 100644
+index 5dc07f8..15289ef 100644
 --- a/src/rt/rust_builtin.c
 +++ b/src/rt/rust_builtin.c
 @@ -65,17 +65,17 @@ timegm(struct tm *tm)
@@ -2631,6 +2631,7 @@ index 5dc07f8..5286ad7 100644
  #endif
  
 +#if defined(__Bitrig__)
++#include <stdio.h>
 +#include <sys/param.h>
 +#include <sys/sysctl.h>
 +#include <limits.h>
@@ -2644,7 +2645,7 @@ index 5dc07f8..5286ad7 100644
 +  char **menv = NULL;
 +  size_t maxlen, len;
 +  int nenv = 0;
-+  int i, ret;
++  int i;
 +
 +  if ((p == NULL) && (sz == NULL))
 +    return -1;
@@ -2840,7 +2841,6 @@ index 5dc07f8..5286ad7 100644
 +  static char *self = NULL;
 +  char *argv0;
 +  char **paths;
-+  char *path;
 +  size_t sz;
 +  int i;
 +  char buf[2*PATH_MAX], exe[2*PATH_MAX];
