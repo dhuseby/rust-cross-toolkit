@@ -41,6 +41,7 @@ clone(){
     git submodule update
   else
     # update everything
+    echo "already cloned...skipping"
     cd ${TOP}/rust
     #git pull origin
     #git submodule update --merge
@@ -64,7 +65,7 @@ patch_src(){
     fi
     date > .patched
   else
-    echo "${1} already patched on:" `cat .patched`
+    echo "${1} already patched on:" `cat .patched` "...skipping"
   fi
 }
 
@@ -73,10 +74,15 @@ bitrig_configure(){
 
   # configure rust
   cd ${TOP}/rust
-  ./configure --disable-docs --enable-clang --prefix=${PREFIX}
-  if (( $? )); then
-    echo "Failed to configure rust"
-    exit 1
+  if [ ! -e .configured ]; then
+    ./configure --disable-docs --enable-clang --prefix=${PREFIX}
+    if (( $? )); then
+      echo "Failed to configure rust"
+      exit 1
+    fi
+    date > .configured
+  else
+    echo "already configured...skipping"
   fi
 }
 
