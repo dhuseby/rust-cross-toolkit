@@ -1,0 +1,3097 @@
+diff --git a/configure b/configure
+index 2127f2c..efd18ff 100755
+--- a/configure
++++ b/configure
+@@ -369,18 +369,22 @@ case $CFG_OSTYPE in
+     FreeBSD)
+         CFG_OSTYPE=unknown-freebsd
+         ;;
+ 
+     DragonFly)
+         CFG_OSTYPE=unknown-dragonfly
+         ;;
+ 
++    Bitrig)
++        CFG_OSTYPE=unknown-bitrig
++        ;;
++
+     OpenBSD)
+-	CFG_OSTYPE=unknown-openbsd
++        CFG_OSTYPE=unknown-openbsd
+        ;;
+ 
+     Darwin)
+         CFG_OSTYPE=apple-darwin
+         ;;
+ 
+     MINGW*)
+         # msys' `uname` does not print gcc configuration, but prints msys
+@@ -743,16 +747,23 @@ fi
+ 
+ # Force freebsd to build with clang; gcc doesn't like us there
+ if [ $CFG_OSTYPE = unknown-freebsd ]
+ then
+     step_msg "on FreeBSD, forcing use of clang"
+     CFG_ENABLE_CLANG=1
+ fi
+ 
++# Force bitrig to build with clang; gcc doesn't like us there
++if [ $CFG_OSTYPE = unknown-bitrig ]
++then
++    step_msg "on Bitrig, forcing use of clang"
++    CFG_ENABLE_CLANG=1
++fi
++
+ if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
+ then
+     err "either clang or gcc is required"
+ fi
+ 
+ # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
+ # system, so if we find that gcc is clang, we should just use clang directly.
+ if [ $CFG_OSTYPE = apple-darwin -a -z "$CFG_ENABLE_CLANG" ]
+@@ -1102,21 +1113,22 @@ then
+     "${CFG_GIT}" submodule update --recursive
+     need_ok "git failed"
+ 
+     # NB: this is just for the sake of getting the submodule SHA1 values
+     # and status written into the build log.
+     msg "git: submodule status"
+     "${CFG_GIT}" submodule status --recursive
+ 
+-    msg "git: submodule clobber"
+-    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
+-    need_ok "git failed"
+-    "${CFG_GIT}" submodule foreach --recursive git checkout .
+-    need_ok "git failed"
++    # don't clobber so that our patches won't get removed
++    #msg "git: submodule clobber"
++    #"${CFG_GIT}" submodule foreach --recursive git clean -dxf
++    #need_ok "git failed"
++    #"${CFG_GIT}" submodule foreach --recursive git checkout .
++    #need_ok "git failed"
+ 
+     cd ${CFG_BUILD_DIR}
+ fi
+ 
+ # Configure llvm, only if necessary
+ step_msg "looking at LLVM"
+ CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
+ for t in $CFG_HOST
+diff --git a/mk/cfg/x86_64-unknown-bitrig.mk b/mk/cfg/x86_64-unknown-bitrig.mk
+new file mode 100644
+index 0000000..ad34988
+--- /dev/null
++++ b/mk/cfg/x86_64-unknown-bitrig.mk
+@@ -0,0 +1,26 @@
++# x86_64-unknown-bitrig-elf configuration
++CC_x86_64-unknown-bitrig=$(CC)
++CXX_x86_64-unknown-bitrig=$(CXX)
++CPP_x86_64-unknown-bitrig=$(CPP)
++AR_x86_64-unknown-bitrig=$(AR)
++CFG_LIB_NAME_x86_64-unknown-bitrig=lib$(1).so
++CFG_STATIC_LIB_NAME_x86_64-unknown-bitrig=lib$(1).a
++CFG_LIB_GLOB_x86_64-unknown-bitrig=lib$(1)-*.so
++CFG_LIB_DSYM_GLOB_x86_64-unknown-bitrig=$(1)-*.dylib.dSYM
++CFG_JEMALLOC_CFLAGS_x86_64-unknown-bitrig := -m64 -I/usr/include $(CFLAGS)
++CFG_GCCISH_CFLAGS_x86_64-unknown-bitrig := -Wall -Werror -fPIC -m64 -I/usr/include $(CFLAGS)
++CFG_GCCISH_LINK_FLAGS_x86_64-unknown-bitrig := -shared -pic -pthread -m64 $(LDFLAGS)
++CFG_GCCISH_DEF_FLAG_x86_64-unknown-bitrig := -Wl,--export-dynamic,--dynamic-list=
++CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-pic -Wl,-whole-archive
++CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-bitrig := -Wl,-no-whole-archive
++CFG_DEF_SUFFIX_x86_64-unknown-bitrig := .bsd.def
++CFG_LLC_FLAGS_x86_64-unknown-bitrig :=
++CFG_INSTALL_NAME_x86_64-unknown-bitrig =
++CFG_EXE_SUFFIX_x86_64-unknown-bitrig :=
++CFG_WINDOWSY_x86_64-unknown-bitrig :=
++CFG_UNIXY_x86_64-unknown-bitrig := 1
++CFG_PATH_MUNGE_x86_64-unknown-bitrig :=
++CFG_LDPATH_x86_64-unknown-bitrig :=
++CFG_RUN_x86_64-unknown-bitrig=$(2)
++CFG_RUN_TARG_x86_64-unknown-bitrig=$(call CFG_RUN_x86_64-unknown-bitrig,,$(2))
++CFG_GNU_TRIPLE_x86_64-unknown-bitrig := x86_64-unknown-bitrig
+diff --git a/mk/platform.mk b/mk/platform.mk
+index 78c1057..3b172e8 100644
+--- a/mk/platform.mk
++++ b/mk/platform.mk
+@@ -139,24 +139,24 @@ ifdef CFG_CCACHE_BASEDIR
+   export CCACHE_BASEDIR
+ endif
+ 
+ FIND_COMPILER = $(word 1,$(1:ccache=))
+ 
+ define CFG_MAKE_TOOLCHAIN
+   # Prepend the tools with their prefix if cross compiling
+   ifneq ($(CFG_BUILD),$(1))
+-	CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
+-	CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
+-	CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
+-	AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
+-	RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
+-	    -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
++  CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
++  CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
++  CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
++  AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
++  RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
++      -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
+ 
+-	RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
++  RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
+   endif
+ 
+   CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
+         $$(CFG_GCCISH_CFLAGS) \
+         $$(CFG_GCCISH_CFLAGS_$(1)) \
+         $$(CFG_DEPEND_FLAGS) \
+         -c -o $$(1) $$(2)
+   CFG_LINK_C_$(1) = $$(CC_$(1)) \
+@@ -174,29 +174,37 @@ define CFG_MAKE_TOOLCHAIN
+   CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
+         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
+         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
+         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
+         $$(call CFG_INSTALL_NAME_$(1),$$(4))
+ 
+   ifeq ($$(findstring $(HOST_$(1)),arm aarch64 mips mipsel powerpc),)
+ 
++  # On Bitrig, we need the relocation model to be PIC for everthing
++  ifeq (,$(filter $(OSTYPE_$(1)),bitrig))
++    LLVM_MC_RELOCATION_MODEL="pic"
++  else
++    LLVM_MC_RELOCATION_MODEL="default"
++  endif
++
+   # We're using llvm-mc as our assembler because it supports
+   # .cfi pseudo-ops on mac
+   CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
+                     $$(LLVM_MC_$$(CFG_BUILD)) \
+                     -assemble \
++                    -relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
+                     -filetype=obj \
+                     -triple=$(1) \
+                     -o=$$(1)
+   else
+ 
+   # For the ARM, AARCH64, MIPS and POWER crosses, use the toolchain assembler
+   # FIXME: We should be able to use the LLVM assembler
+   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
+-		    $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
++        $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
+ 
+   endif
+ 
+ endef
+ 
+ $(foreach target,$(CFG_TARGET), \
+   $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))
+diff --git a/src/compiletest/util.rs b/src/compiletest/util.rs
+index 078eb7b..ee011e3 100644
+--- a/src/compiletest/util.rs
++++ b/src/compiletest/util.rs
+@@ -18,16 +18,17 @@ static OS_TABLE: &'static [(&'static str, &'static str)] = &[
+     ("mingw32", "windows"),
+     ("win32", "windows"),
+     ("windows", "windows"),
+     ("darwin", "macos"),
+     ("android", "android"),
+     ("linux", "linux"),
+     ("freebsd", "freebsd"),
+     ("dragonfly", "dragonfly"),
++    ("bitrig", "bitrig"),
+     ("openbsd", "openbsd"),
+ ];
+ 
+ pub fn get_os(triple: &str) -> &'static str {
+     for &(triple_os, os) in OS_TABLE {
+         if triple.contains(triple_os) {
+             return os
+         }
+diff --git a/src/doc/reference.md b/src/doc/reference.md
+index 3269468..dafcb0a 100644
+--- a/src/doc/reference.md
++++ b/src/doc/reference.md
+@@ -2188,18 +2188,18 @@ The following configurations must be defined by the implementation:
+ * `target_arch = "..."`. Target CPU architecture, such as `"x86"`, `"x86_64"`
+   `"mips"`, `"powerpc"`, `"arm"`, or `"aarch64"`.
+ * `target_endian = "..."`. Endianness of the target CPU, either `"little"` or
+   `"big"`.
+ * `target_family = "..."`. Operating system family of the target, e. g.
+   `"unix"` or `"windows"`. The value of this configuration option is defined
+   as a configuration itself, like `unix` or `windows`.
+ * `target_os = "..."`. Operating system of the target, examples include
+-  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"` or
+-  `"openbsd"`.
++  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"`,
++  `"bitrig"` or `"openbsd"`.
+ * `target_word_size = "..."`. Target word size in bits. This is set to `"32"`
+   for targets with 32-bit pointers, and likewise set to `"64"` for 64-bit
+   pointers.
+ * `unix`. See `target_family`.
+ * `windows`. See `target_family`.
+ 
+ ### Lint check attributes
+ 
+diff --git a/src/etc/local_stage0.sh b/src/etc/local_stage0.sh
+index b506aff..ca59b1c 100755
+--- a/src/etc/local_stage0.sh
++++ b/src/etc/local_stage0.sh
+@@ -13,17 +13,17 @@ TARG_DIR=$1
+ PREFIX=$2
+ RUSTLIBDIR=$3
+ 
+ LIB_DIR=lib
+ LIB_PREFIX=lib
+ 
+ OS=`uname -s`
+ case $OS in
+-    ("Linux"|"FreeBSD"|"DragonFly"|"OpenBSD")
++    ("Linux"|"FreeBSD"|"DragonFly"|"Bitrig"|"OpenBSD")
+     BIN_SUF=
+     LIB_SUF=.so
+     ;;
+     ("Darwin")
+     BIN_SUF=
+     LIB_SUF=.dylib
+     ;;
+     (*)
+diff --git a/src/etc/mklldeps.py b/src/etc/mklldeps.py
+index a423415..e5e8c9f 100644
+--- a/src/etc/mklldeps.py
++++ b/src/etc/mklldeps.py
+@@ -52,17 +52,26 @@ version = run([llconfig, '--version']).strip()
+ if version < '3.5':
+     args = [llconfig, '--libs']
+ else:
+     args = [llconfig, '--libs', '--system-libs']
+ 
+ args.extend(components)
+ out = run(args)
+ for lib in out.strip().replace("\n", ' ').split(' '):
+-    lib = lib.strip()[2:] # chop of the leading '-l'
++    if len(lib) == 0:
++        continue
++    # in some cases we get extra spaces in between libs so ignore those
++    if len(lib) == 1 and lib == ' ':
++        continue
++    # not all libs strictly follow -lfoo, on Bitrig, there is -pthread
++    if lib[0:2] == '-l':
++        lib = lib.strip()[2:]
++    elif lib[0] == '-':
++        lib = lib.strip()[1:]
+     f.write("#[link(name = \"" + lib + "\"")
+     # LLVM libraries are all static libraries
+     if 'LLVM' in lib:
+         f.write(", kind = \"static\"")
+     f.write(")]\n")
+ 
+ # llvm-config before 3.5 didn't have a system-libs flag
+ if version < '3.5':
+diff --git a/src/etc/snapshot.py b/src/etc/snapshot.py
+index 264af5f..0349ccf 100644
+--- a/src/etc/snapshot.py
++++ b/src/etc/snapshot.py
+@@ -41,23 +41,23 @@ download_dir_base = "dl"
+ download_unpack_base = os.path.join(download_dir_base, "unpack")
+ 
+ snapshot_files = {
+         "linux": ["bin/rustc"],
+         "macos": ["bin/rustc"],
+         "winnt": ["bin/rustc.exe"],
+         "freebsd": ["bin/rustc"],
+         "dragonfly": ["bin/rustc"],
++        "bitrig": ["bin/rustc"],
+         "openbsd": ["bin/rustc"],
+         }
+ 
+ winnt_runtime_deps_32 = ["libgcc_s_dw2-1.dll", "libstdc++-6.dll"]
+ winnt_runtime_deps_64 = ["libgcc_s_seh-1.dll", "libstdc++-6.dll"]
+ 
+-
+ def parse_line(n, line):
+     global snapshotfile
+ 
+     if re.match(r"\s*$", line):
+         return None
+ 
+     if re.match(r"^T\s*$", line):
+         return None
+@@ -96,16 +96,18 @@ def get_kernel(triple):
+     if os_name == "windows":
+         return "winnt"
+     if os_name == "darwin":
+         return "macos"
+     if os_name == "freebsd":
+         return "freebsd"
+     if os_name == "dragonfly":
+         return "dragonfly"
++    if os_name == "bitrig":
++        return "bitrig"
+     if os_name == "openbsd":
+         return "openbsd"
+     return "linux"
+ 
+ 
+ def get_cpu(triple):
+     arch = triple.split('-')[0]
+     if arch == "i686":
+diff --git a/src/libbacktrace/configure b/src/libbacktrace/configure
+index 14a9fd4..694b5d2 100755
+--- a/src/libbacktrace/configure
++++ b/src/libbacktrace/configure
+@@ -5645,17 +5645,17 @@ else
+     ;;
+ 
+   amigaos*)
+     # On AmigaOS with pdksh, this test takes hours, literally.
+     # So we just punt and use a minimum line length of 8192.
+     lt_cv_sys_max_cmd_len=8192;
+     ;;
+ 
+-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
++  netbsd* | freebsd* | openbsd* | darwin* | dragonfly* | bitrig*)
+     # This has been around since 386BSD, at least.  Likely further.
+     if test -x /sbin/sysctl; then
+       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
+     elif test -x /usr/sbin/sysctl; then
+       lt_cv_sys_max_cmd_len=`/usr/sbin/sysctl -n kern.argmax`
+     else
+       lt_cv_sys_max_cmd_len=65536	# usable default for all BSDs
+     fi
+@@ -9327,17 +9327,17 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
+     freebsd2.*)
+       archive_cmds='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'
+       hardcode_direct=yes
+       hardcode_minus_L=yes
+       hardcode_shlibpath_var=no
+       ;;
+ 
+     # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
+-    freebsd* | dragonfly* | openbsd*)
++    freebsd* | dragonfly* | bitrig* | openbsd*)
+       archive_cmds='$CC -shared -o $lib $libobjs $deplibs $compiler_flags'
+       hardcode_libdir_flag_spec='-R$libdir'
+       hardcode_direct=yes
+       hardcode_shlibpath_var=no
+       ;;
+ 
+     hpux9*)
+       if test "$GCC" = yes; then
+diff --git a/src/libbacktrace/ltmain.sh b/src/libbacktrace/ltmain.sh
+index 9503ec8..eaef55a 100644
+--- a/src/libbacktrace/ltmain.sh
++++ b/src/libbacktrace/ltmain.sh
+@@ -4736,17 +4736,17 @@ func_mode_link ()
+ 	  *-*-cygwin* | *-*-mingw* | *-*-pw32* | *-*-beos* | *-cegcc* | *-*-haiku*)
+ 	    # These systems don't actually have a C or math library (as such)
+ 	    continue
+ 	    ;;
+ 	  *-*-os2*)
+ 	    # These systems don't actually have a C library (as such)
+ 	    test "X$arg" = "X-lc" && continue
+ 	    ;;
+-	  *-*-openbsd* | *-*-freebsd* | *-*-dragonfly*)
++	  *-*-openbsd* | *-*-freebsd* | *-*-dragonfly* | *-*-bitrig*)
+ 	    # Do not include libc due to us having libc/libc_r.
+ 	    test "X$arg" = "X-lc" && continue
+ 	    ;;
+ 	  *-*-rhapsody* | *-*-darwin1.[012])
+ 	    # Rhapsody C and math libraries are in the System framework
+ 	    deplibs="$deplibs System.ltframework"
+ 	    continue
+ 	    ;;
+diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
+index c5ea10b..f12339b 100644
+--- a/src/liblibc/lib.rs
++++ b/src/liblibc/lib.rs
+@@ -276,27 +276,28 @@ pub use funcs::bsd43::{shutdown};
+ #[cfg(windows)] pub use funcs::extra::kernel32::{RemoveDirectoryW};
+ #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
+ #[cfg(windows)] pub use funcs::extra::winsock::{ioctlsocket};
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "android",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ pub use consts::os::posix01::{CLOCK_REALTIME, CLOCK_MONOTONIC};
+ 
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub use funcs::posix01::unistd::{fdatasync};
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub use types::os::arch::extra::{sockaddr_ll};
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub use consts::os::extra::{AF_PACKET};
+ 
+-#[cfg(all(unix, not(any(target_os = "freebsd", target_os = "openbsd"))))]
++#[cfg(all(unix, not(any(target_os = "freebsd", target_os = "bitrig", target_os = "openbsd"))))]
+ pub use consts::os::extra::{MAP_STACK};
+ 
+ #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+ pub use consts::os::bsd44::{TCP_KEEPIDLE};
+ 
+ #[cfg(any(target_os = "macos", target_os = "ios"))]
+ pub use consts::os::bsd44::{TCP_KEEPALIVE};
+ #[cfg(any(target_os = "macos", target_os = "ios"))]
+@@ -1322,27 +1323,45 @@ pub mod types {
+             }
+             pub mod bsd44 {
+             }
+             pub mod extra {
+             }
+         }
+     }
+ 
+-    #[cfg(target_os = "openbsd")]
++    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+     pub mod os {
+         pub mod common {
+             pub mod posix01 {
+                 use types::common::c95::{c_void};
+                 use types::os::arch::c95::{c_char, c_int, size_t,
+                                                  time_t, suseconds_t, c_long};
+                 use types::os::arch::c99::{uintptr_t};
+ 
+                 pub type pthread_t = uintptr_t;
+ 
++                #[cfg(target_os = "bitrig")]
++                #[repr(C)]
++                #[derive(Copy)] pub struct glob_t {
++                    pub gl_pathc:  c_int,
++                    pub gl_matchc: c_int,
++                    pub gl_offs:   c_int,
++                    pub gl_flags:  c_int,
++                    pub gl_pathv:  *mut *mut c_char,
++                    pub __unused1: *mut c_void,
++                    pub __unused2: *mut c_void,
++                    pub __unused3: *mut c_void,
++                    pub __unused4: *mut c_void,
++                    pub __unused5: *mut c_void,
++                    pub __unused6: *mut c_void,
++                    pub __unused7: *mut c_void,
++                }
++
++                #[cfg(target_os = "openbsd")]
+                 #[repr(C)]
+                 #[derive(Copy)] pub struct glob_t {
+                     pub gl_pathc:  c_int,
+                     pub __unused1: c_int,
+                     pub gl_offs:   c_int,
+                     pub __unused2: c_int,
+                     pub gl_pathv:  *mut *mut c_char,
+ 
+@@ -1451,17 +1470,16 @@ pub mod types {
+                     pub ifa_next: *mut ifaddrs,
+                     pub ifa_name: *mut c_char,
+                     pub ifa_flags: c_uint,
+                     pub ifa_addr: *mut sockaddr,
+                     pub ifa_netmask: *mut sockaddr,
+                     pub ifa_dstaddr: *mut sockaddr,
+                     pub ifa_data: *mut c_void
+                 }
+-
+             }
+         }
+ 
+         #[cfg(target_arch = "x86_64")]
+         pub mod arch {
+             pub mod c95 {
+                 pub type c_char = i8;
+                 pub type c_schar = i8;
+@@ -1485,62 +1503,60 @@ pub mod types {
+                 pub type c_longlong = i64;
+                 pub type c_ulonglong = u64;
+                 pub type intptr_t = i64;
+                 pub type uintptr_t = u64;
+                 pub type intmax_t = i64;
+                 pub type uintmax_t = u64;
+             }
+             pub mod posix88 {
++                use types::os::arch::c95::{c_long};
+                 pub type off_t = i64;
+-                pub type dev_t = u32;
++                pub type dev_t = i32;
+                 pub type ino_t = u64;
+                 pub type pid_t = i32;
+                 pub type uid_t = u32;
+                 pub type gid_t = u32;
+                 pub type useconds_t = u32;
+                 pub type mode_t = u32;
+-                pub type ssize_t = i64;
++                pub type ssize_t = c_long;
+             }
+             pub mod posix01 {
+                 use types::common::c95::{c_void};
+                 use types::common::c99::{uint32_t, uint64_t};
+-                use types::os::arch::c95::{c_long, time_t};
++                use types::os::arch::c95::{time_t};
+                 use types::os::arch::posix88::{dev_t, gid_t};
+                 use types::os::arch::posix88::{mode_t, off_t};
+                 use types::os::arch::posix88::{uid_t};
++                use types::os::common::posix01::{timespec};
+ 
+-                pub type nlink_t = u32;
++                pub type nlink_t = uint32_t;
+                 pub type blksize_t = uint32_t;
+                 pub type ino_t = uint64_t;
+                 pub type blkcnt_t = i64;
+                 pub type fflags_t = u32; // type not declared, but struct stat have u_int32_t
+ 
+                 #[repr(C)]
+                 #[derive(Copy)] pub struct stat {
+                     pub st_mode: mode_t,
+                     pub st_dev: dev_t,
+                     pub st_ino: ino_t,
+                     pub st_nlink: nlink_t,
+                     pub st_uid: uid_t,
+                     pub st_gid: gid_t,
+                     pub st_rdev: dev_t,
+-                    pub st_atime: time_t,
+-                    pub st_atime_nsec: c_long,
+-                    pub st_mtime: time_t,
+-                    pub st_mtime_nsec: c_long,
+-                    pub st_ctime: time_t,
+-                    pub st_ctime_nsec: c_long,
++                    pub st_atim: timespec,
++                    pub st_mtim: timespec,
++                    pub st_ctim: timespec,
+                     pub st_size: off_t,
+                     pub st_blocks: blkcnt_t,
+                     pub st_blksize: blksize_t,
+                     pub st_flags: fflags_t,
+                     pub st_gen: uint32_t,
+-                    pub st_birthtime: time_t,
+-                    pub st_birthtime_nsec: c_long,
++                    pub __st_birthtim: timespec,
+                 }
+                 #[repr(C)]
+                 #[derive(Copy)] pub struct utimbuf {
+                     pub actime: time_t,
+                     pub modtime: time_t,
+                 }
+ 
+                 pub type pthread_attr_t = *mut c_void;
+@@ -3887,17 +3903,396 @@ pub mod consts {
+             pub const _SC_RTSIG_MAX : c_int = 48;
+             pub const _SC_SEM_NSEMS_MAX : c_int = 49;
+             pub const _SC_SEM_VALUE_MAX : c_int = 50;
+             pub const _SC_SIGQUEUE_MAX : c_int = 51;
+             pub const _SC_TIMER_MAX : c_int = 52;
+         }
+     }
+ 
+-    #[cfg(target_os = "openbsd")]
++    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
++    pub mod os {
++        pub mod c95 {
++            use types::os::arch::c95::{c_int, c_uint};
++
++            pub const EXIT_FAILURE : c_int = 1;
++            pub const EXIT_SUCCESS : c_int = 0;
++            pub const RAND_MAX : c_int = 2147483647;
++            pub const EOF : c_int = -1;
++            pub const SEEK_SET : c_int = 0;
++            pub const SEEK_CUR : c_int = 1;
++            pub const SEEK_END : c_int = 2;
++            pub const _IOFBF : c_int = 0;
++            pub const _IONBF : c_int = 2;
++            pub const _IOLBF : c_int = 1;
++            pub const BUFSIZ : c_uint = 1024_u32;
++            pub const FOPEN_MAX : c_uint = 20_u32;
++            pub const FILENAME_MAX : c_uint = 1024_u32;
++            pub const L_tmpnam : c_uint = 1024_u32;
++            pub const TMP_MAX : c_uint = 308915776_u32;
++        }
++        pub mod c99 {
++        }
++        pub mod posix88 {
++            use types::common::c95::c_void;
++            use types::os::arch::c95::c_int;
++            use types::os::arch::posix88::mode_t;
++
++            pub const O_RDONLY : c_int = 0;
++            pub const O_WRONLY : c_int = 1;
++            pub const O_RDWR : c_int = 2;
++            pub const O_APPEND : c_int = 8;
++            pub const O_CREAT : c_int = 512;
++            pub const O_EXCL : c_int = 2048;
++            pub const O_TRUNC : c_int = 1024;
++            pub const S_IFIFO : mode_t = 4096;
++            pub const S_IFCHR : mode_t = 8192;
++            pub const S_IFBLK : mode_t = 24576;
++            pub const S_IFDIR : mode_t = 16384;
++            pub const S_IFREG : mode_t = 32768;
++            pub const S_IFLNK : mode_t = 40960;
++            pub const S_IFMT : mode_t = 61440;
++            pub const S_IEXEC : mode_t = 64;
++            pub const S_IWRITE : mode_t = 128;
++            pub const S_IREAD : mode_t = 256;
++            pub const S_IRWXU : mode_t = 448;
++            pub const S_IXUSR : mode_t = 64;
++            pub const S_IWUSR : mode_t = 128;
++            pub const S_IRUSR : mode_t = 256;
++            pub const F_OK : c_int = 0;
++            pub const R_OK : c_int = 4;
++            pub const W_OK : c_int = 2;
++            pub const X_OK : c_int = 1;
++            pub const STDIN_FILENO : c_int = 0;
++            pub const STDOUT_FILENO : c_int = 1;
++            pub const STDERR_FILENO : c_int = 2;
++            pub const F_LOCK : c_int = 1;
++            pub const F_TEST : c_int = 3;
++            pub const F_TLOCK : c_int = 2;
++            pub const F_ULOCK : c_int = 0;
++            pub const SIGHUP : c_int = 1;
++            pub const SIGINT : c_int = 2;
++            pub const SIGQUIT : c_int = 3;
++            pub const SIGILL : c_int = 4;
++            pub const SIGABRT : c_int = 6;
++            pub const SIGFPE : c_int = 8;
++            pub const SIGKILL : c_int = 9;
++            pub const SIGSEGV : c_int = 11;
++            pub const SIGPIPE : c_int = 13;
++            pub const SIGALRM : c_int = 14;
++            pub const SIGTERM : c_int = 15;
++
++            pub const PROT_NONE : c_int = 0;
++            pub const PROT_READ : c_int = 1;
++            pub const PROT_WRITE : c_int = 2;
++            pub const PROT_EXEC : c_int = 4;
++
++            pub const MAP_FILE : c_int = 0x0000;
++            pub const MAP_SHARED : c_int = 0x0001;
++            pub const MAP_PRIVATE : c_int = 0x0002;
++            pub const MAP_FIXED : c_int = 0x0010;
++            pub const MAP_ANON : c_int = 0x1000;
++
++            pub const MAP_FAILED : *mut c_void = -1 as *mut c_void;
++
++            pub const MCL_CURRENT : c_int = 0x0001;
++            pub const MCL_FUTURE : c_int = 0x0002;
++
++            pub const MS_ASYNC : c_int = 0x0001;
++            pub const MS_SYNC : c_int = 0x0002;
++            pub const MS_INVALIDATE : c_int = 0x0004;
++
++            pub const EPERM : c_int = 1;
++            pub const ENOENT : c_int = 2;
++            pub const ESRCH : c_int = 3;
++            pub const EINTR : c_int = 4;
++            pub const EIO : c_int = 5;
++            pub const ENXIO : c_int = 6;
++            pub const E2BIG : c_int = 7;
++            pub const ENOEXEC : c_int = 8;
++            pub const EBADF : c_int = 9;
++            pub const ECHILD : c_int = 10;
++            pub const EDEADLK : c_int = 11;
++            pub const ENOMEM : c_int = 12;
++            pub const EACCES : c_int = 13;
++            pub const EFAULT : c_int = 14;
++            pub const ENOTBLK : c_int = 15;
++            pub const EBUSY : c_int = 16;
++            pub const EEXIST : c_int = 17;
++            pub const EXDEV : c_int = 18;
++            pub const ENODEV : c_int = 19;
++            pub const ENOTDIR : c_int = 20;
++            pub const EISDIR : c_int = 21;
++            pub const EINVAL : c_int = 22;
++            pub const ENFILE : c_int = 23;
++            pub const EMFILE : c_int = 24;
++            pub const ENOTTY : c_int = 25;
++            pub const ETXTBSY : c_int = 26;
++            pub const EFBIG : c_int = 27;
++            pub const ENOSPC : c_int = 28;
++            pub const ESPIPE : c_int = 29;
++            pub const EROFS : c_int = 30;
++            pub const EMLINK : c_int = 31;
++            pub const EPIPE : c_int = 32;
++            pub const EDOM : c_int = 33;
++            pub const ERANGE : c_int = 34;
++            pub const EAGAIN : c_int = 35;
++            pub const EWOULDBLOCK : c_int = 35;
++            pub const EINPROGRESS : c_int = 36;
++            pub const EALREADY : c_int = 37;
++            pub const ENOTSOCK : c_int = 38;
++            pub const EDESTADDRREQ : c_int = 39;
++            pub const EMSGSIZE : c_int = 40;
++            pub const EPROTOTYPE : c_int = 41;
++            pub const ENOPROTOOPT : c_int = 42;
++            pub const EPROTONOSUPPORT : c_int = 43;
++            pub const ESOCKTNOSUPPORT : c_int = 44;
++            pub const EOPNOTSUPP : c_int = 45;
++            pub const EPFNOSUPPORT : c_int = 46;
++            pub const EAFNOSUPPORT : c_int = 47;
++            pub const EADDRINUSE : c_int = 48;
++            pub const EADDRNOTAVAIL : c_int = 49;
++            pub const ENETDOWN : c_int = 50;
++            pub const ENETUNREACH : c_int = 51;
++            pub const ENETRESET : c_int = 52;
++            pub const ECONNABORTED : c_int = 53;
++            pub const ECONNRESET : c_int = 54;
++            pub const ENOBUFS : c_int = 55;
++            pub const EISCONN : c_int = 56;
++            pub const ENOTCONN : c_int = 57;
++            pub const ESHUTDOWN : c_int = 58;
++            pub const ETOOMANYREFS : c_int = 59;
++            pub const ETIMEDOUT : c_int = 60;
++            pub const ECONNREFUSED : c_int = 61;
++            pub const ELOOP : c_int = 62;
++            pub const ENAMETOOLONG : c_int = 63;
++            pub const EHOSTDOWN : c_int = 64;
++            pub const EHOSTUNREACH : c_int = 65;
++            pub const ENOTEMPTY : c_int = 66;
++            pub const EPROCLIM : c_int = 67;
++            pub const EUSERS : c_int = 68;
++            pub const EDQUOT : c_int = 69;
++            pub const ESTALE : c_int = 70;
++            pub const EREMOTE : c_int = 71;
++            pub const EBADRPC : c_int = 72;
++            pub const ERPCMISMATCH : c_int = 73;
++            pub const EPROGUNAVAIL : c_int = 74;
++            pub const EPROGMISMATCH : c_int = 75;
++            pub const EPROCUNAVAIL : c_int = 76;
++            pub const ENOLCK : c_int = 77;
++            pub const ENOSYS : c_int = 78;
++            pub const EFTYPE : c_int = 79;
++            pub const EAUTH : c_int = 80;
++            pub const ENEEDAUTH : c_int = 81;
++            pub const EIPSEC : c_int = 82;
++            pub const ENOATTR : c_int = 83;
++            pub const EILSEQ : c_int = 84;
++            pub const ENOMEDIUM : c_int = 85;
++            pub const EMEDIUMTYPE : c_int = 86;
++            pub const EOVERFLOW : c_int = 87;
++            pub const ECANCELED : c_int = 88;
++            pub const EIDRM : c_int = 89;
++            pub const ENOMSG : c_int = 90;
++            pub const ENOTSUP : c_int = 91;
++            pub const ELAST : c_int = 91; // must be equal to largest errno
++        }
++        pub mod posix01 {
++            use types::os::arch::c95::{c_int, size_t};
++
++            pub const F_DUPFD : c_int = 0;
++            pub const F_GETFD : c_int = 1;
++            pub const F_SETFD : c_int = 2;
++            pub const F_GETFL : c_int = 3;
++            pub const F_SETFL : c_int = 4;
++            pub const F_GETOWN : c_int = 5;
++            pub const F_SETOWN : c_int = 6;
++            pub const F_GETLK : c_int = 7;
++            pub const F_SETLK : c_int = 8;
++            pub const F_SETLKW : c_int = 9;
++            pub const F_DUPFD_CLOEXEC : c_int = 10;
++
++            pub const SIGTRAP : c_int = 5;
++            pub const SIGPIPE: c_int = 13;
++            pub const SIG_IGN: size_t = 1;
++
++            pub const GLOB_APPEND   : c_int = 0x0001;
++            pub const GLOB_DOOFFS   : c_int = 0x0002;
++            pub const GLOB_ERR      : c_int = 0x0004;
++            pub const GLOB_MARK     : c_int = 0x0008;
++            pub const GLOB_NOCHECK  : c_int = 0x0010;
++            pub const GLOB_NOSORT   : c_int = 0x0020;
++            pub const GLOB_NOESCAPE : c_int = 0x1000;
++
++            pub const GLOB_NOSPACE  : c_int = -1;
++            pub const GLOB_ABORTED  : c_int = -2;
++            pub const GLOB_NOMATCH  : c_int = -3;
++            pub const GLOB_NOSYS : c_int = -4;
++
++            pub const POSIX_MADV_NORMAL : c_int = 0;
++            pub const POSIX_MADV_RANDOM : c_int = 1;
++            pub const POSIX_MADV_SEQUENTIAL : c_int = 2;
++            pub const POSIX_MADV_WILLNEED : c_int = 3;
++            pub const POSIX_MADV_DONTNEED : c_int = 4;
++
++            pub const _SC_IOV_MAX : c_int = 51;
++            pub const _SC_GETGR_R_SIZE_MAX : c_int = 100;
++            pub const _SC_GETPW_R_SIZE_MAX : c_int = 101;
++            pub const _SC_LOGIN_NAME_MAX : c_int = 102;
++            pub const _SC_MQ_PRIO_MAX : c_int = 59;
++            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 77;
++            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 78;
++            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 80;
++            pub const _SC_THREAD_KEYS_MAX : c_int = 81;
++            pub const _SC_THREAD_PRIO_INHERIT : c_int = 82;
++            pub const _SC_THREAD_PRIO_PROTECT : c_int = 83;
++            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 84;
++            pub const _SC_THREAD_PROCESS_SHARED : c_int = 85;
++            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 103;
++            pub const _SC_THREAD_STACK_MIN : c_int = 89;
++            pub const _SC_THREAD_THREADS_MAX : c_int = 90;
++            pub const _SC_THREADS : c_int = 91;
++            pub const _SC_TTY_NAME_MAX : c_int = 107;
++            pub const _SC_ATEXIT_MAX : c_int = 146;
++            pub const _SC_XOPEN_CRYPT : c_int = 117;
++            pub const _SC_XOPEN_ENH_I18N : c_int = 118;
++            pub const _SC_XOPEN_LEGACY : c_int = 119;
++            pub const _SC_XOPEN_REALTIME : c_int = 120;
++            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 121;
++            pub const _SC_XOPEN_SHM : c_int = 30;
++            pub const _SC_XOPEN_UNIX : c_int = 123;
++            pub const _SC_XOPEN_VERSION : c_int = 125;
++
++            pub const PTHREAD_CREATE_JOINABLE : c_int = 0;
++            pub const PTHREAD_CREATE_DETACHED : c_int = 1;
++            pub const PTHREAD_STACK_MIN : size_t = 2048;
++
++            pub const CLOCK_REALTIME : c_int = 0;
++            pub const CLOCK_MONOTONIC : c_int = 3;
++        }
++        pub mod posix08 {
++        }
++        pub mod bsd44 {
++            use types::os::arch::c95::c_int;
++
++            pub const MADV_NORMAL : c_int = 0;
++            pub const MADV_RANDOM : c_int = 1;
++            pub const MADV_SEQUENTIAL : c_int = 2;
++            pub const MADV_WILLNEED : c_int = 3;
++            pub const MADV_DONTNEED : c_int = 4;
++            pub const MADV_FREE : c_int = 6;
++
++            pub const AF_UNIX: c_int = 1;
++            pub const AF_INET: c_int = 2;
++            pub const AF_INET6: c_int = 24;
++            pub const SOCK_STREAM: c_int = 1;
++            pub const SOCK_DGRAM: c_int = 2;
++            pub const SOCK_RAW: c_int = 3;
++            pub const IPPROTO_TCP: c_int = 6;
++            pub const IPPROTO_IP: c_int = 0;
++            pub const IPPROTO_IPV6: c_int = 41;
++            pub const IP_MULTICAST_TTL: c_int = 10;
++            pub const IP_MULTICAST_LOOP: c_int = 11;
++            pub const IP_TTL: c_int = 4;
++            pub const IP_HDRINCL: c_int = 2;
++            pub const IP_ADD_MEMBERSHIP: c_int = 12;
++            pub const IP_DROP_MEMBERSHIP: c_int = 13;
++            pub const IPV6_ADD_MEMBERSHIP: c_int = 12; // don't exist
++            pub const IPV6_DROP_MEMBERSHIP: c_int = 13; // don't exist
++
++            pub const TCP_NODELAY: c_int = 0x01;
++            pub const SOL_SOCKET: c_int = 0xffff;
++            pub const SO_KEEPALIVE: c_int = 0x0008;
++            pub const SO_BROADCAST: c_int = 0x0020;
++            pub const SO_REUSEADDR: c_int = 0x0004;
++            pub const SO_ERROR: c_int = 0x1007;
++
++            pub const IFF_LOOPBACK: c_int = 0x8;
++
++            pub const SHUT_RD: c_int = 0;
++            pub const SHUT_WR: c_int = 1;
++            pub const SHUT_RDWR: c_int = 2;
++        }
++        pub mod extra {
++            use types::os::arch::c95::c_int;
++
++            pub const O_DSYNC : c_int = 128; // same as SYNC
++            pub const O_SYNC : c_int = 128;
++            pub const O_NONBLOCK : c_int = 4;
++            pub const CTL_KERN : c_int = 1;
++            pub const KERN_PROC : c_int = 66;
++
++            pub const MAP_COPY : c_int = 0x0002;
++            pub const MAP_RENAME : c_int = 0x0000;
++            pub const MAP_NORESERVE : c_int = 0x0000;
++            pub const MAP_NOEXTEND : c_int = 0x0000;
++            pub const MAP_HASSEMAPHORE : c_int = 0x0000;
++
++            pub const IPPROTO_RAW : c_int = 255;
++
++            pub const PATH_MAX: c_int = 1024;
++        }
++        pub mod sysconf {
++            use types::os::arch::c95::c_int;
++
++            pub const _SC_ARG_MAX : c_int = 1;
++            pub const _SC_CHILD_MAX : c_int = 2;
++            pub const _SC_CLK_TCK : c_int = 3;
++            pub const _SC_NGROUPS_MAX : c_int = 4;
++            pub const _SC_OPEN_MAX : c_int = 5;
++            pub const _SC_JOB_CONTROL : c_int = 6;
++            pub const _SC_SAVED_IDS : c_int = 7;
++            pub const _SC_VERSION : c_int = 8;
++            pub const _SC_BC_BASE_MAX : c_int = 9;
++            pub const _SC_BC_DIM_MAX : c_int = 10;
++            pub const _SC_BC_SCALE_MAX : c_int = 11;
++            pub const _SC_BC_STRING_MAX : c_int = 12;
++            pub const _SC_COLL_WEIGHTS_MAX : c_int = 13;
++            pub const _SC_EXPR_NEST_MAX : c_int = 14;
++            pub const _SC_LINE_MAX : c_int = 15;
++            pub const _SC_RE_DUP_MAX : c_int = 16;
++            pub const _SC_2_VERSION : c_int = 17;
++            pub const _SC_2_C_BIND : c_int = 18;
++            pub const _SC_2_C_DEV : c_int = 19;
++            pub const _SC_2_CHAR_TERM : c_int = 20;
++            pub const _SC_2_FORT_DEV : c_int = 21;
++            pub const _SC_2_FORT_RUN : c_int = 22;
++            pub const _SC_2_LOCALEDEF : c_int = 23;
++            pub const _SC_2_SW_DEV : c_int = 24;
++            pub const _SC_2_UPE : c_int = 25;
++            pub const _SC_STREAM_MAX : c_int = 26;
++            pub const _SC_TZNAME_MAX : c_int = 27;
++            pub const _SC_PAGESIZE : c_int = 28;
++            pub const _SC_FSYNC : c_int = 29;
++            pub const _SC_SEM_NSEMS_MAX : c_int = 31;
++            pub const _SC_SEM_VALUE_MAX : c_int = 32;
++            pub const _SC_AIO_LISTIO_MAX : c_int = 42;
++            pub const _SC_AIO_MAX : c_int = 43;
++            pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
++            pub const _SC_ASYNCHRONOUS_IO : c_int = 45;
++            pub const _SC_DELAYTIMER_MAX : c_int = 50;
++            pub const _SC_MAPPED_FILES : c_int = 53;
++            pub const _SC_MEMLOCK : c_int = 54;
++            pub const _SC_MEMLOCK_RANGE : c_int = 55;
++            pub const _SC_MEMORY_PROTECTION : c_int = 56;
++            pub const _SC_MESSAGE_PASSING : c_int = 57;
++            pub const _SC_MQ_OPEN_MAX : c_int = 58;
++            pub const _SC_PRIORITIZED_IO : c_int = 60;
++            pub const _SC_PRIORITY_SCHEDULING : c_int = 61;
++            pub const _SC_REALTIME_SIGNALS : c_int = 64;
++            pub const _SC_RTSIG_MAX : c_int = 66;
++            pub const _SC_SEMAPHORES : c_int = 67;
++            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 68;
++            pub const _SC_SIGQUEUE_MAX : c_int = 70;
++            pub const _SC_SYNCHRONIZED_IO : c_int = 75;
++            pub const _SC_TIMER_MAX : c_int = 93;
++            pub const _SC_TIMERS : c_int = 94;
++        }
++    }
++
++    #[cfg(any(target_os = "macos", target_os = "ios"))]
+     pub mod os {
+         pub mod c95 {
+             use types::os::arch::c95::{c_int, c_uint};
+ 
+             pub const EXIT_FAILURE : c_int = 1;
+             pub const EXIT_SUCCESS : c_int = 0;
+             pub const RAND_MAX : c_int = 2147483647;
+             pub const EOF : c_int = -1;
+@@ -5000,45 +5395,48 @@ pub mod funcs {
+     }
+ 
+     #[cfg(any(target_os = "linux",
+               target_os = "android",
+               target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     pub mod posix88 {
+         pub mod stat_ {
+             use types::os::arch::c95::{c_char, c_int};
+             use types::os::arch::posix01::stat;
+             use types::os::arch::posix88::mode_t;
+ 
+             extern {
+                 pub fn chmod(path: *const c_char, mode: mode_t) -> c_int;
+                 pub fn fchmod(fd: c_int, mode: mode_t) -> c_int;
+ 
+                 #[cfg(any(target_os = "linux",
+                           target_os = "freebsd",
+                           target_os = "dragonfly",
++                          target_os = "bitrig",
+                           target_os = "openbsd",
+                           target_os = "android",
+                           target_os = "ios"))]
+                 pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+ 
+                 #[cfg(target_os = "macos")]
+                 #[link_name = "fstat64"]
+                 pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+ 
+                 pub fn mkdir(path: *const c_char, mode: mode_t) -> c_int;
+                 pub fn mkfifo(path: *const c_char, mode: mode_t) -> c_int;
+ 
+                 #[cfg(any(target_os = "linux",
+                           target_os = "freebsd",
+                           target_os = "dragonfly",
++                          target_os = "bitrig",
+                           target_os = "openbsd",
+                           target_os = "android",
+                           target_os = "ios"))]
+                 pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
+ 
+                 #[cfg(target_os = "macos")]
+                 #[link_name = "stat64"]
+                 pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
+@@ -5223,26 +5621,28 @@ pub mod funcs {
+     }
+ 
+     #[cfg(any(target_os = "linux",
+               target_os = "android",
+               target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     pub mod posix01 {
+         pub mod stat_ {
+             use types::os::arch::c95::{c_char, c_int};
+             use types::os::arch::posix01::stat;
+ 
+             extern {
+                 #[cfg(any(target_os = "linux",
+                           target_os = "freebsd",
+                           target_os = "dragonfly",
++                          target_os = "bitrig",
+                           target_os = "openbsd",
+                           target_os = "android",
+                           target_os = "ios"))]
+                 pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
+ 
+                 #[cfg(target_os = "macos")]
+                 #[link_name = "lstat64"]
+                 pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
+@@ -5342,16 +5742,17 @@ pub mod funcs {
+ 
+     #[cfg(any(target_os = "windows",
+               target_os = "linux",
+               target_os = "android",
+               target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     pub mod posix08 {
+         pub mod unistd {
+         }
+     }
+ 
+     #[cfg(not(windows))]
+     pub mod bsd43 {
+@@ -5429,16 +5830,17 @@ pub mod funcs {
+             pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
+         }
+     }
+ 
+     #[cfg(any(target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     pub mod bsd44 {
+         use types::common::c95::{c_void};
+         use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, c_ulong, size_t};
+ 
+         extern {
+             pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
+             pub fn sysctl(name: *mut c_int,
+@@ -5458,20 +5860,21 @@ pub mod funcs {
+                                    mibp: *mut c_int,
+                                    sizep: *mut size_t)
+                                    -> c_int;
+             pub fn getdtablesize() -> c_int;
+             pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
+                            -> c_int;
+             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
+                            -> c_int;
++            pub fn realpath(pathname: *const c_char, resolved: *mut c_char)
++                            -> *mut c_char;
+         }
+     }
+ 
+-
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     pub mod bsd44 {
+         use types::common::c95::{c_void};
+         use types::os::arch::c95::{c_uchar, c_int, size_t};
+ 
+         extern {
+             pub fn getdtablesize() -> c_int;
+             pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
+@@ -5494,16 +5897,17 @@ pub mod funcs {
+         extern {
+             pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32)
+                                         -> c_int;
+         }
+     }
+ 
+     #[cfg(any(target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     pub mod extra {
+     }
+ 
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     pub mod extra {
+     }
+ 
+diff --git a/src/librustc_back/arm.rs b/src/librustc_back/arm.rs
+index a4417b4..7325e4e 100644
+--- a/src/librustc_back/arm.rs
++++ b/src/librustc_back/arm.rs
+@@ -56,17 +56,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
+           abi::OsAndroid => {
+             "e-p:32:32:32\
+                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
+                 -f32:32:32-f64:64:64\
+                 -v64:64:64-v128:64:128\
+                 -a:0:64-n32".to_string()
+           }
+ 
+-          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig | abi::OsOpenbsd => {
+             "e-p:32:32:32\
+                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
+                 -f32:32:32-f64:64:64\
+                 -v64:64:64-v128:64:128\
+                 -a:0:64-n32".to_string()
+           }
+         },
+ 
+diff --git a/src/librustc_back/mips.rs b/src/librustc_back/mips.rs
+index cb44fe1..b46150f 100644
+--- a/src/librustc_back/mips.rs
++++ b/src/librustc_back/mips.rs
+@@ -51,17 +51,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
+           abi::OsAndroid => {
+             "E-p:32:32:32\
+                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
+                 -f32:32:32-f64:64:64\
+                 -v64:64:64-v128:64:128\
+                 -a:0:64-n32".to_string()
+           }
+ 
+-          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig | abi::OsOpenbsd => {
+             "E-p:32:32:32\
+                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
+                 -f32:32:32-f64:64:64\
+                 -v64:64:64-v128:64:128\
+                 -a:0:64-n32".to_string()
+           }
+         },
+ 
+diff --git a/src/librustc_back/mipsel.rs b/src/librustc_back/mipsel.rs
+index 7ee357f..c7fa7aa 100644
+--- a/src/librustc_back/mipsel.rs
++++ b/src/librustc_back/mipsel.rs
+@@ -51,17 +51,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
+           abi::OsAndroid => {
+             "e-p:32:32:32\
+                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
+                 -f32:32:32-f64:64:64\
+                 -v64:64:64-v128:64:128\
+                 -a:0:64-n32".to_string()
+           }
+ 
+-          abi::OsFreebsd | abi::OsDragonfly | abi::OsOpenbsd => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig | abi::OsOpenbsd => {
+             "e-p:32:32:32\
+                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
+                 -f32:32:32-f64:64:64\
+                 -v64:64:64-v128:64:128\
+                 -a:0:64-n32".to_string()
+           }
+         },
+ 
+diff --git a/src/librustc_back/rpath.rs b/src/librustc_back/rpath.rs
+index 36bbd4b..d772ae7 100644
+--- a/src/librustc_back/rpath.rs
++++ b/src/librustc_back/rpath.rs
+@@ -210,16 +210,17 @@ mod test {
+         };
+         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
+         assert_eq!(res, "$ORIGIN/../lib");
+     }
+ 
+     #[test]
+     #[cfg(any(target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     fn test_rpath_relative() {
+         let config = &mut RPathConfig {
+             used_crates: Vec::new(),
+             has_rpath: true,
+             is_like_osx: false,
+             out_filename: Path::new("bin/rustc"),
+             get_install_prefix_lib_path: || panic!(),
+diff --git a/src/librustc_back/target/bitrig_base.rs b/src/librustc_back/target/bitrig_base.rs
+new file mode 100644
+index 0000000..6e5a48c
+--- /dev/null
++++ b/src/librustc_back/target/bitrig_base.rs
+@@ -0,0 +1,28 @@
++// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
++// file at the top-level directory of this distribution and at
++// http://rust-lang.org/COPYRIGHT.
++//
++// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
++// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
++// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
++// option. This file may not be copied, modified, or distributed
++// except according to those terms.
++
++use target::TargetOptions;
++use std::default::Default;
++
++pub fn opts() -> TargetOptions {
++    TargetOptions {
++        linker: "cc".to_string(),
++        dynamic_linking: true,
++        executables: true,
++        morestack: false,
++        linker_is_gnu: true,
++        has_rpath: true,
++        position_independent_executables: true,
++        pre_link_args: vec!(
++        ),
++
++        .. Default::default()
++    }
++}
+diff --git a/src/librustc_back/target/mod.rs b/src/librustc_back/target/mod.rs
+index bffee9d..1dd9b8e 100644
+--- a/src/librustc_back/target/mod.rs
++++ b/src/librustc_back/target/mod.rs
+@@ -51,16 +51,17 @@ use std::default::Default;
+ use std::old_io::fs::PathExtensions;
+ 
+ mod windows_base;
+ mod linux_base;
+ mod apple_base;
+ mod apple_ios_base;
+ mod freebsd_base;
+ mod dragonfly_base;
++mod bitrig_base;
+ mod openbsd_base;
+ 
+ mod armv7_apple_ios;
+ mod armv7s_apple_ios;
+ mod i386_apple_ios;
+ 
+ mod arm_linux_androideabi;
+ mod arm_unknown_linux_gnueabi;
+@@ -75,16 +76,17 @@ mod i686_unknown_linux_gnu;
+ mod mips_unknown_linux_gnu;
+ mod mipsel_unknown_linux_gnu;
+ mod powerpc_unknown_linux_gnu;
+ mod x86_64_apple_darwin;
+ mod x86_64_apple_ios;
+ mod x86_64_pc_windows_gnu;
+ mod x86_64_unknown_freebsd;
+ mod x86_64_unknown_dragonfly;
++mod x86_64_unknown_bitrig;
+ mod x86_64_unknown_linux_gnu;
+ mod x86_64_unknown_openbsd;
+ 
+ /// Everything `rustc` knows about how to compile for a specific target.
+ ///
+ /// Every field here must be specified, and has no default value.
+ #[derive(Clone, Debug)]
+ pub struct Target {
+@@ -350,16 +352,17 @@ impl Target {
+             arm_unknown_linux_gnueabihf,
+             aarch64_unknown_linux_gnu,
+ 
+             x86_64_unknown_freebsd,
+ 
+             i686_unknown_dragonfly,
+             x86_64_unknown_dragonfly,
+ 
++            x86_64_unknown_bitrig,
+             x86_64_unknown_openbsd,
+ 
+             x86_64_apple_darwin,
+             i686_apple_darwin,
+ 
+             i386_apple_ios,
+             x86_64_apple_ios,
+             aarch64_apple_ios,
+diff --git a/src/librustc_back/target/x86_64_unknown_bitrig.rs b/src/librustc_back/target/x86_64_unknown_bitrig.rs
+new file mode 100644
+index 0000000..7b7877c
+--- /dev/null
++++ b/src/librustc_back/target/x86_64_unknown_bitrig.rs
+@@ -0,0 +1,28 @@
++// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
++// file at the top-level directory of this distribution and at
++// http://rust-lang.org/COPYRIGHT.
++//
++// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
++// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
++// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
++// option. This file may not be copied, modified, or distributed
++// except according to those terms.
++
++use target::Target;
++
++pub fn target() -> Target {
++    let mut base = super::bitrig_base::opts();
++    base.pre_link_args.push("-m64".to_string());
++
++    Target {
++        data_layout: "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
++                     f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
++                     s0:64:64-f80:128:128-n8:16:32:64-S128".to_string(),
++        llvm_target: "x86_64-unknown-bitrig".to_string(),
++        target_endian: "little".to_string(),
++        target_pointer_width: "64".to_string(),
++        arch: "x86_64".to_string(),
++        target_os: "bitrig".to_string(),
++        options: base,
++    }
++}
+diff --git a/src/librustc_back/x86.rs b/src/librustc_back/x86.rs
+index 9d1b734..0569de6 100644
+--- a/src/librustc_back/x86.rs
++++ b/src/librustc_back/x86.rs
+@@ -40,20 +40,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os)
+ 
+           abi::OsLinux => {
+             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
+           }
+           abi::OsAndroid => {
+             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
+           }
+ 
+-          abi::OsFreebsd => {
+-            "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
+-          }
+-          abi::OsDragonfly => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
+             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
+           }
+           abi::OsOpenbsd => {
+             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
+           }
+ 
+         },
+ 
+diff --git a/src/librustc_back/x86_64.rs b/src/librustc_back/x86_64.rs
+index 2f13bb3..12d717e 100644
+--- a/src/librustc_back/x86_64.rs
++++ b/src/librustc_back/x86_64.rs
+@@ -42,22 +42,17 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
+                 s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
+           }
+           abi::OsAndroid => {
+             "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
+                 f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
+                 s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
+           }
+ 
+-          abi::OsFreebsd => {
+-            "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
+-                f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
+-                s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
+-          }
+-          abi::OsDragonfly => {
++          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig => {
+             "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
+                 f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
+                 s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
+           }
+           abi::OsOpenbsd => {
+             "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
+                 f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
+                 s0:64:64-f80:128:128-n8:16:32:64-S128".to_string()
+diff --git a/src/librustdoc/flock.rs b/src/librustdoc/flock.rs
+index a7cf5eb..099be92 100644
+--- a/src/librustdoc/flock.rs
++++ b/src/librustdoc/flock.rs
+@@ -59,17 +59,19 @@ mod imp {
+         }
+ 
+         pub const F_UNLCK: libc::c_short = 2;
+         pub const F_WRLCK: libc::c_short = 3;
+         pub const F_SETLK: libc::c_int = 12;
+         pub const F_SETLKW: libc::c_int = 13;
+     }
+ 
+-    #[cfg(any(target_os = "dragonfly", target_os = "openbsd"))]
++    #[cfg(any(target_os = "dragonfly", 
++              target_os = "bitrig",
++              target_os = "openbsd"))]
+     mod os {
+         use libc;
+ 
+         pub struct flock {
+             pub l_start: libc::off_t,
+             pub l_len: libc::off_t,
+             pub l_pid: libc::pid_t,
+             pub l_type: libc::c_short,
+diff --git a/src/libstd/dynamic_lib.rs b/src/libstd/dynamic_lib.rs
+index 68ae0f7..33a8f8b 100644
+--- a/src/libstd/dynamic_lib.rs
++++ b/src/libstd/dynamic_lib.rs
+@@ -161,16 +161,17 @@ mod test {
+         }
+     }
+ 
+     #[test]
+     #[cfg(any(target_os = "linux",
+               target_os = "macos",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     fn test_errors_do_not_crash() {
+         // Open /dev/null as a library to get an error, and make sure
+         // that only causes an error, and not a crash.
+         let path = Path::new("/dev/null");
+         match DynamicLibrary::open(Some(&path)) {
+             Err(_) => {}
+             Ok(_) => panic!("Successfully opened the empty library.")
+@@ -179,16 +180,17 @@ mod test {
+ }
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "android",
+           target_os = "macos",
+           target_os = "ios",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ mod dl {
+     use prelude::v1::*;
+ 
+     use ffi::{self, CString};
+     use str;
+     use libc;
+     use ptr;
+diff --git a/src/libstd/env.rs b/src/libstd/env.rs
+index 559a685..03089b3 100644
+--- a/src/libstd/env.rs
++++ b/src/libstd/env.rs
+@@ -558,16 +558,80 @@ pub mod consts {
+     pub const EXE_SUFFIX: &'static str = "";
+ 
+     /// Specifies the file extension, if any, used for executable binaries
+     /// on this platform: in this case, the empty string.
+     pub const EXE_EXTENSION: &'static str = "";
+ }
+ 
+ /// Constants associated with the current target
++#[cfg(target_os = "bitrig")]
++pub mod consts {
++    pub use super::arch_consts::ARCH;
++
++    pub const FAMILY: &'static str = "unix";
++
++    /// A string describing the specific operating system in use: in this
++    /// case, `bitrig`.
++    pub const SYSNAME: &'static str = "bitrig";
++
++    /// Specifies the filename prefix used for shared libraries on this
++    /// platform: in this case, `lib`.
++    pub const DLL_PREFIX: &'static str = "lib";
++
++    /// Specifies the filename suffix used for shared libraries on this
++    /// platform: in this case, `.so`.
++    pub const DLL_SUFFIX: &'static str = ".so";
++
++    /// Specifies the file extension used for shared libraries on this
++    /// platform that goes after the dot: in this case, `so`.
++    pub const DLL_EXTENSION: &'static str = "so";
++
++    /// Specifies the filename suffix used for executable binaries on this
++    /// platform: in this case, the empty string.
++    pub const EXE_SUFFIX: &'static str = "";
++
++    /// Specifies the file extension, if any, used for executable binaries
++    /// on this platform: in this case, the empty string.
++    pub const EXE_EXTENSION: &'static str = "";
++}
++
++/// Constants associated with the current target
++#[cfg(target_os = "openbsd")]
++pub mod consts {
++    pub use super::arch_consts::ARCH;
++
++    pub const FAMILY: &'static str = "unix";
++
++    /// A string describing the specific operating system in use: in this
++    /// case, `openbsd`.
++    pub const SYSNAME: &'static str = "openbsd";
++
++    /// Specifies the filename prefix used for shared libraries on this
++    /// platform: in this case, `lib`.
++    pub const DLL_PREFIX: &'static str = "lib";
++
++    /// Specifies the filename suffix used for shared libraries on this
++    /// platform: in this case, `.so`.
++    pub const DLL_SUFFIX: &'static str = ".so";
++
++    /// Specifies the file extension used for shared libraries on this
++    /// platform that goes after the dot: in this case, `so`.
++    pub const DLL_EXTENSION: &'static str = "so";
++
++    /// Specifies the filename suffix used for executable binaries on this
++    /// platform: in this case, the empty string.
++    pub const EXE_SUFFIX: &'static str = "";
++
++    /// Specifies the file extension, if any, used for executable binaries
++    /// on this platform: in this case, the empty string.
++    pub const EXE_EXTENSION: &'static str = "";
++}
++
++/// Constants associated with the current target
+ #[cfg(target_os = "android")]
+ pub mod consts {
+     pub use super::arch_consts::ARCH;
+ 
+     pub const FAMILY: &'static str = "unix";
+ 
+     /// A string describing the specific operating system in use: in this
+     /// case, `android`.
+diff --git a/src/libstd/os.rs b/src/libstd/os.rs
+index 64f9e16..3d7d878 100644
+--- a/src/libstd/os.rs
++++ b/src/libstd/os.rs
+@@ -634,16 +634,17 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+ 
+     res
+ }
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "android",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ fn real_args_as_bytes() -> Vec<Vec<u8>> {
+     use rt;
+     rt::args::clone().unwrap_or_else(|| vec![])
+ }
+ 
+ #[cfg(not(windows))]
+ fn real_args() -> Vec<String> {
+@@ -1283,17 +1284,52 @@ pub mod consts {
+     /// platform: in this case, the empty string.
+     pub const EXE_SUFFIX: &'static str = "";
+ 
+     /// Specifies the file extension, if any, used for executable binaries
+     /// on this platform: in this case, the empty string.
+     pub const EXE_EXTENSION: &'static str = "";
+ }
+ 
++#[cfg(target_os = "bitrig")]
++#[deprecated(since = "1.0.0", reason = "renamed to env::consts")]
++#[unstable(feature = "os")]
++pub mod consts {
++    pub use os::arch_consts::ARCH;
++
++    pub const FAMILY: &'static str = "unix";
++
++    /// A string describing the specific operating system in use: in this
++    /// case, `bitrig`.
++    pub const SYSNAME: &'static str = "bitrig";
++
++    /// Specifies the filename prefix used for shared libraries on this
++    /// platform: in this case, `lib`.
++    pub const DLL_PREFIX: &'static str = "lib";
++
++    /// Specifies the filename suffix used for shared libraries on this
++    /// platform: in this case, `.so`.
++    pub const DLL_SUFFIX: &'static str = ".so";
++
++    /// Specifies the file extension used for shared libraries on this
++    /// platform that goes after the dot: in this case, `so`.
++    pub const DLL_EXTENSION: &'static str = "so";
++
++    /// Specifies the filename suffix used for executable binaries on this
++    /// platform: in this case, the empty string.
++    pub const EXE_SUFFIX: &'static str = "";
++
++    /// Specifies the file extension, if any, used for executable binaries
++    /// on this platform: in this case, the empty string.
++    pub const EXE_EXTENSION: &'static str = "";
++}
++
+ #[cfg(target_os = "openbsd")]
++#[deprecated(since = "1.0.0", reason = "renamed to env::consts")]
++#[unstable(feature = "os")]
+ pub mod consts {
+     pub use os::arch_consts::ARCH;
+ 
+     pub const FAMILY: &'static str = "unix";
+ 
+     /// A string describing the specific operating system in use: in this
+     /// case, `openbsd`.
+     pub const SYSNAME: &'static str = "openbsd";
+diff --git a/src/libstd/rt/args.rs b/src/libstd/rt/args.rs
+index b3bed4a..c1a52b8 100644
+--- a/src/libstd/rt/args.rs
++++ b/src/libstd/rt/args.rs
+@@ -38,16 +38,17 @@ pub fn put(args: Vec<Vec<u8>>) { imp::put(args) }
+ 
+ /// Make a clone of the global arguments.
+ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "android",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ mod imp {
+     use prelude::v1::*;
+ 
+     use libc;
+     use mem;
+     use ffi;
+ 
+diff --git a/src/libstd/rt/libunwind.rs b/src/libstd/rt/libunwind.rs
+index 43e3a43..3063d9d 100644
+--- a/src/libstd/rt/libunwind.rs
++++ b/src/libstd/rt/libunwind.rs
+@@ -104,16 +104,20 @@ extern {}
+ #[cfg(any(target_os = "android", target_os = "openbsd"))]
+ #[link(name = "gcc")]
+ extern {}
+ 
+ #[cfg(target_os = "dragonfly")]
+ #[link(name = "gcc_pic")]
+ extern {}
+ 
++#[cfg(target_os = "bitrig")]
++#[link(name = "c++abi")]
++extern {}
++
+ extern "C" {
+     // iOS on armv7 uses SjLj exceptions and requires to link
+     // against corresponding routine (..._SjLj_...)
+     #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
+     pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception)
+                                   -> _Unwind_Reason_Code;
+ 
+     #[cfg(all(target_os = "ios", target_arch = "arm"))]
+diff --git a/src/libstd/rtdeps.rs b/src/libstd/rtdeps.rs
+index 1392bc8..a2f5e86 100644
+--- a/src/libstd/rtdeps.rs
++++ b/src/libstd/rtdeps.rs
+@@ -34,17 +34,19 @@ extern {}
+ #[link(name = "log")]
+ extern {}
+ 
+ #[cfg(target_os = "freebsd")]
+ #[link(name = "execinfo")]
+ #[link(name = "pthread")]
+ extern {}
+ 
+-#[cfg(any(target_os = "dragonfly", target_os = "openbsd"))]
++#[cfg(any(target_os = "dragonfly", 
++          target_os = "bitrig",
++          target_os = "openbsd"))]
+ #[link(name = "pthread")]
+ extern {}
+ 
+ #[cfg(target_os = "macos")]
+ #[link(name = "System")]
+ extern {}
+ 
+ #[cfg(target_os = "ios")]
+diff --git a/src/libstd/sys/common/net.rs b/src/libstd/sys/common/net.rs
+index 833de8a..573d582 100644
+--- a/src/libstd/sys/common/net.rs
++++ b/src/libstd/sys/common/net.rs
+@@ -684,17 +684,18 @@ impl TcpStream {
+         }
+     }
+ 
+     #[cfg(any(target_os = "macos", target_os = "ios"))]
+     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
+                    seconds as libc::c_int)
+     }
+-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
++    #[cfg(any(target_os = "freebsd",
++              target_os = "dragonfly"))]
+     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
+                    seconds as libc::c_int)
+     }
+     #[cfg(target_os = "openbsd")]
+     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::SO_KEEPALIVE,
+                    seconds as libc::c_int)
+diff --git a/src/libstd/sys/common/stack.rs b/src/libstd/sys/common/stack.rs
+index 8dd2f15..bc4ea66 100644
+--- a/src/libstd/sys/common/stack.rs
++++ b/src/libstd/sys/common/stack.rs
+@@ -184,21 +184,28 @@ pub unsafe fn record_sp_limit(limit: uint) {
+     }
+     #[cfg(all(target_arch = "x86_64", target_os = "windows"))] #[inline(always)]
+     unsafe fn target_record_sp_limit(_: uint) {
+     }
+     #[cfg(all(target_arch = "x86_64", target_os = "freebsd"))] #[inline(always)]
+     unsafe fn target_record_sp_limit(limit: uint) {
+         asm!("movq $0, %fs:24" :: "r"(limit) :: "volatile")
+     }
+-    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))] #[inline(always)]
++    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))]
++    #[inline(always)]
+     unsafe fn target_record_sp_limit(limit: uint) {
+         asm!("movq $0, %fs:32" :: "r"(limit) :: "volatile")
+     }
+ 
++    #[cfg(target_os = "bitrig")]
++    #[inline(always)]
++    unsafe fn target_record_sp_limit(_: uint) {
++        // segmented stacks are disabled
++    }
++
+     // x86
+     #[cfg(all(target_arch = "x86",
+               any(target_os = "macos", target_os = "ios")))]
+     #[inline(always)]
+     unsafe fn target_record_sp_limit(limit: uint) {
+         asm!("movl $$0x48+90*4, %eax
+               movl $0, %gs:(%eax)" :: "r"(limit) : "eax" : "volatile")
+     }
+@@ -271,22 +278,28 @@ pub unsafe fn get_sp_limit() -> uint {
+         return 1024;
+     }
+     #[cfg(all(target_arch = "x86_64", target_os = "freebsd"))] #[inline(always)]
+     unsafe fn target_get_sp_limit() -> uint {
+         let limit;
+         asm!("movq %fs:24, $0" : "=r"(limit) ::: "volatile");
+         return limit;
+     }
+-    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))] #[inline(always)]
++    #[cfg(all(target_arch = "x86_64", target_os = "dragonfly"))]
++    #[inline(always)]
+     unsafe fn target_get_sp_limit() -> uint {
+         let limit;
+         asm!("movq %fs:32, $0" : "=r"(limit) ::: "volatile");
+         return limit;
+     }
++    #[cfg(target_os = "bitrig")]
++    #[inline(always)]
++    unsafe fn target_get_sp_limit() -> uint {
++      return 2048;
++    }
+ 
+ 
+     // x86
+     #[cfg(all(target_arch = "x86",
+               any(target_os = "macos", target_os = "ios")))]
+     #[inline(always)]
+     unsafe fn target_get_sp_limit() -> uint {
+         let limit;
+diff --git a/src/libstd/sys/unix/backtrace.rs b/src/libstd/sys/unix/backtrace.rs
+index 5e512e9..258e705 100644
+--- a/src/libstd/sys/unix/backtrace.rs
++++ b/src/libstd/sys/unix/backtrace.rs
+@@ -314,16 +314,17 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
+     // FIXME: We also call self_exe_name() on DragonFly BSD. I haven't
+     //        tested if this is required or not.
+     unsafe fn init_state() -> *mut backtrace_state {
+         static mut STATE: *mut backtrace_state = 0 as *mut backtrace_state;
+         static mut LAST_FILENAME: [libc::c_char; 256] = [0; 256];
+         if !STATE.is_null() { return STATE }
+         let selfname = if cfg!(target_os = "freebsd") ||
+                           cfg!(target_os = "dragonfly") ||
++                          cfg!(target_os = "bitrig") ||
+                           cfg!(target_os = "openbsd") {
+             env::current_exe().ok()
+         } else {
+             None
+         };
+         let filename = match selfname {
+             Some(path) => {
+                 let bytes = path.as_vec();
+diff --git a/src/libstd/sys/unix/c.rs b/src/libstd/sys/unix/c.rs
+index 50a8e6b..0844f80 100644
+--- a/src/libstd/sys/unix/c.rs
++++ b/src/libstd/sys/unix/c.rs
+@@ -19,16 +19,17 @@ pub use self::signal::{SA_ONSTACK, SA_RESTART, SA_RESETHAND, SA_NOCLDSTOP};
+ pub use self::signal::{SA_NODEFER, SA_NOCLDWAIT, SA_SIGINFO, SIGCHLD};
+ 
+ use libc;
+ 
+ #[cfg(any(target_os = "macos",
+           target_os = "ios",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ pub const FIONBIO: libc::c_ulong = 0x8004667e;
+ #[cfg(any(all(target_os = "linux",
+               any(target_arch = "x86",
+                   target_arch = "x86_64",
+                   target_arch = "arm",
+                   target_arch = "aarch64")),
+           target_os = "android"))]
+@@ -38,16 +39,17 @@ pub const FIONBIO: libc::c_ulong = 0x5421;
+               target_arch = "mipsel",
+               target_arch = "powerpc")))]
+ pub const FIONBIO: libc::c_ulong = 0x667e;
+ 
+ #[cfg(any(target_os = "macos",
+           target_os = "ios",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ pub const FIOCLEX: libc::c_ulong = 0x20006601;
+ #[cfg(any(all(target_os = "linux",
+               any(target_arch = "x86",
+                   target_arch = "x86_64",
+                   target_arch = "arm",
+                   target_arch = "aarch64")),
+           target_os = "android"))]
+@@ -57,28 +59,32 @@ pub const FIOCLEX: libc::c_ulong = 0x5451;
+               target_arch = "mipsel",
+               target_arch = "powerpc")))]
+ pub const FIOCLEX: libc::c_ulong = 0x6601;
+ 
+ #[cfg(any(target_os = "macos",
+           target_os = "ios",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ pub const MSG_DONTWAIT: libc::c_int = 0x80;
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub const MSG_DONTWAIT: libc::c_int = 0x40;
+ 
+ pub const WNOHANG: libc::c_int = 1;
+ 
+ #[cfg(target_os = "linux")]
+ pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 70;
+ #[cfg(any(target_os = "macos",
+           target_os = "freebsd"))]
+ pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 71;
++#[cfg(any(target_os = "bitrig",
++          target_os = "openbsd"))]
++pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 101;
+ #[cfg(target_os = "android")]
+ pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 0x0048;
+ 
+ #[repr(C)]
+ #[cfg(target_os = "linux")]
+ pub struct passwd {
+     pub pw_name: *mut libc::c_char,
+     pub pw_passwd: *mut libc::c_char,
+@@ -86,17 +92,19 @@ pub struct passwd {
+     pub pw_gid: libc::gid_t,
+     pub pw_gecos: *mut libc::c_char,
+     pub pw_dir: *mut libc::c_char,
+     pub pw_shell: *mut libc::c_char,
+ }
+ 
+ #[repr(C)]
+ #[cfg(any(target_os = "macos",
+-          target_os = "freebsd"))]
++          target_os = "freebsd",
++          target_os = "bitrig",
++          target_os = "openbsd"))]
+ pub struct passwd {
+     pub pw_name: *mut libc::c_char,
+     pub pw_passwd: *mut libc::c_char,
+     pub pw_uid: libc::uid_t,
+     pub pw_gid: libc::gid_t,
+     pub pw_change: libc::time_t,
+     pub pw_class: *mut libc::c_char,
+     pub pw_gecos: *mut libc::c_char,
+@@ -163,16 +171,17 @@ mod select {
+     pub fn fd_set(set: &mut fd_set, fd: i32) {
+         set.fds_bits[(fd / 32) as uint] |= 1 << ((fd % 32) as uint);
+     }
+ }
+ 
+ #[cfg(any(target_os = "android",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd",
+           target_os = "linux"))]
+ mod select {
+     use uint;
+     use libc;
+ 
+     pub const FD_SETSIZE: uint = 1024;
+ 
+@@ -331,8 +340,46 @@ mod signal {
+ 
+     #[repr(C)]
+     pub struct sigaction {
+         pub sa_handler: extern fn(libc::c_int),
+         pub sa_flags: libc::c_int,
+         pub sa_mask: sigset_t,
+     }
+ }
++
++#[cfg(target_os = "bitrig")]
++mod signal {
++    use libc;
++
++    pub const SA_ONSTACK: libc::c_int = 0x0001;
++    pub const SA_RESTART: libc::c_int = 0x0002;
++    pub const SA_RESETHAND: libc::c_int = 0x0004;
++    pub const SA_NOCLDSTOP: libc::c_int = 0x0008;
++    pub const SA_NODEFER: libc::c_int = 0x0010;
++    pub const SA_NOCLDWAIT: libc::c_int = 0x0020;
++    pub const SA_SIGINFO: libc::c_int = 0x0040;
++    pub const SIGCHLD: libc::c_int = 20;
++
++    pub type sigset_t = libc::c_uint;
++
++    // This structure has more fields, but we're not all that interested in
++    // them.
++    #[repr(C)]
++    pub struct siginfo {
++        pub si_signo: libc::c_int,
++        pub si_code: libc::c_int,
++        pub si_errno: libc::c_int,
++        // FIXME: Bitrig has a crazy union here in the siginfo, I think this
++        // layout will still work tho.  The status might be off by the size of
++        // a clock_t by my reading, but we can fix this later.
++        pub pid: libc::pid_t,
++        pub uid: libc::uid_t,
++        pub status: libc::c_int,
++    }
++
++    #[repr(C)]
++    pub struct sigaction {
++        pub sa_handler: extern fn(libc::c_int),
++        pub sa_mask: sigset_t,
++        pub sa_flags: libc::c_int,
++    }
++}
+diff --git a/src/libstd/sys/unix/fs.rs b/src/libstd/sys/unix/fs.rs
+index 66ae018..9bde7ed 100644
+--- a/src/libstd/sys/unix/fs.rs
++++ b/src/libstd/sys/unix/fs.rs
+@@ -286,16 +286,43 @@ pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
+     let dst = cstr(dst);
+     mkerr_libc(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })
+ }
+ 
+ fn mkstat(stat: &libc::stat) -> FileStat {
+     // FileStat times are in milliseconds
+     fn mktime(secs: u64, nsecs: u64) -> u64 { secs * 1000 + nsecs / 1000000 }
+ 
++    #[cfg(target_os = "bitrig")]
++    fn ctime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_ctim.tv_sec as u64, stat.st_ctim.tv_nsec as u64)
++    }
++    #[cfg(not(target_os = "bitrig"))]
++    fn ctime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) 
++    }
++
++    #[cfg(target_os = "bitrig")]
++    fn atime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_atim.tv_sec as u64, stat.st_atim.tv_nsec as u64)
++    }
++    #[cfg(not(target_os = "bitrig"))]
++    fn atime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_atime as u64, stat.st_atime_nsec as u64)
++    }
++
++    #[cfg(target_os = "bitrig")]
++    fn mtime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_mtim.tv_sec as u64, stat.st_mtim.tv_nsec as u64)
++    }
++    #[cfg(not(target_os = "bitrig"))]
++    fn mtime(stat: &libc::stat) -> u64 { 
++      mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64)
++    }
++
+     #[cfg(not(any(target_os = "linux", target_os = "android")))]
+     fn flags(stat: &libc::stat) -> u64 { stat.st_flags as u64 }
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     fn flags(_stat: &libc::stat) -> u64 { 0 }
+ 
+     #[cfg(not(any(target_os = "linux", target_os = "android")))]
+     fn gen(stat: &libc::stat) -> u64 { stat.st_gen as u64 }
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+@@ -307,19 +334,19 @@ fn mkstat(stat: &libc::stat) -> FileStat {
+             libc::S_IFREG => old_io::FileType::RegularFile,
+             libc::S_IFDIR => old_io::FileType::Directory,
+             libc::S_IFIFO => old_io::FileType::NamedPipe,
+             libc::S_IFBLK => old_io::FileType::BlockSpecial,
+             libc::S_IFLNK => old_io::FileType::Symlink,
+             _ => old_io::FileType::Unknown,
+         },
+         perm: FilePermission::from_bits_truncate(stat.st_mode as u32),
+-        created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
+-        modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
+-        accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
++        created: ctime(stat),
++        modified: mtime(stat),
++        accessed: atime(stat),
+         unstable: UnstableFileStat {
+             device: stat.st_dev as u64,
+             inode: stat.st_ino as u64,
+             rdev: stat.st_rdev as u64,
+             nlink: stat.st_nlink as u64,
+             uid: stat.st_uid as u64,
+             gid: stat.st_gid as u64,
+             blksize: stat.st_blksize as u64,
+diff --git a/src/libstd/sys/unix/os.rs b/src/libstd/sys/unix/os.rs
+index 5004ff7..e651518 100644
+--- a/src/libstd/sys/unix/os.rs
++++ b/src/libstd/sys/unix/os.rs
+@@ -35,16 +35,26 @@ pub fn errno() -> i32 {
+     #[cfg(any(target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd"))]
+     unsafe fn errno_location() -> *const c_int {
+         extern { fn __error() -> *const c_int; }
+         __error()
+     }
+ 
++    #[cfg(target_os = "bitrig")]
++    fn errno_location() -> *const c_int {
++        extern {
++            fn __errno() -> *const c_int;
++        }
++        unsafe {
++            __errno()
++        }
++    }
++
+     #[cfg(target_os = "dragonfly")]
+     unsafe fn errno_location() -> *const c_int {
+         extern { fn __dfly_error() -> *const c_int; }
+         __dfly_error()
+     }
+ 
+     #[cfg(target_os = "openbsd")]
+     fn errno_location() -> *const c_int {
+@@ -191,34 +201,33 @@ pub fn current_exe() -> IoResult<Path> {
+     }
+ }
+ 
+ #[cfg(target_os = "dragonfly")]
+ pub fn current_exe() -> IoResult<Path> {
+     fs::readlink(&Path::new("/proc/curproc/file"))
+ }
+ 
+-#[cfg(target_os = "openbsd")]
+-pub fn load_self() -> Option<Vec<u8>> {
++#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
++pub fn current_exe() -> IoResult<Path> {
+     use sync::{StaticMutex, MUTEX_INIT};
+-
+     static LOCK: StaticMutex = MUTEX_INIT;
+ 
+     extern {
+         fn rust_load_self() -> *const c_char;
+     }
+ 
+     let _guard = LOCK.lock();
+ 
+     unsafe {
+         let v = rust_load_self();
+         if v.is_null() {
+-            None
++            Err(IoError::last_error())
+         } else {
+-            Some(ffi::c_str_to_bytes(&v).to_vec())
++            Ok(Path::new(ffi::c_str_to_bytes(&v).to_vec()))
+         }
+     }
+ }
+ 
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ pub fn current_exe() -> IoResult<Path> {
+     fs::readlink(&Path::new("/proc/self/exe"))
+ }
+@@ -328,17 +337,19 @@ pub fn args() -> Args {
+     }
+ 
+     Args { iter: res.into_iter(), _dont_send_or_sync_me: 0 as *mut _ }
+ }
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "android",
+           target_os = "freebsd",
+-          target_os = "dragonfly"))]
++          target_os = "dragonfly",
++          target_os = "bitrig",
++          target_os = "openbsd"))]
+ pub fn args() -> Args {
+     use rt;
+     let bytes = rt::args::clone().unwrap_or(Vec::new());
+     let v: Vec<OsString> = bytes.into_iter().map(|v| {
+         OsStringExt::from_vec(v)
+     }).collect();
+     Args { iter: v.into_iter(), _dont_send_or_sync_me: 0 as *mut _ }
+ }
+diff --git a/src/libstd/sys/unix/process.rs b/src/libstd/sys/unix/process.rs
+index 20f8622..509ac92 100644
+--- a/src/libstd/sys/unix/process.rs
++++ b/src/libstd/sys/unix/process.rs
+@@ -588,16 +588,17 @@ fn translate_status(status: c_int) -> ProcessExit {
+         pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
+         pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
+     }
+ 
+     #[cfg(any(target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     mod imp {
+         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
+         pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
+         pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
+     }
+ 
+     if imp::WIFEXITED(status) {
+diff --git a/src/libstd/sys/unix/stack_overflow.rs b/src/libstd/sys/unix/stack_overflow.rs
+index 3512fa3..efcb92e 100644
+--- a/src/libstd/sys/unix/stack_overflow.rs
++++ b/src/libstd/sys/unix/stack_overflow.rs
+@@ -29,16 +29,17 @@ impl Drop for Handler {
+         unsafe {
+             drop_handler(self);
+         }
+     }
+ }
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "macos",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ mod imp {
+     use core::prelude::*;
+     use sys_common::stack;
+ 
+     use super::Handler;
+     use rt::util::report_overflow;
+     use mem;
+@@ -200,30 +201,35 @@ mod imp {
+         pub struct sigaltstack {
+             pub ss_sp: *mut libc::c_void,
+             pub ss_flags: libc::c_int,
+             pub ss_size: libc::size_t
+         }
+ 
+     }
+ 
+-    #[cfg(any(target_os = "macos", target_os = "openbsd"))]
++    #[cfg(any(target_os = "macos", 
++              target_os = "bitrig",
++              target_os = "openbsd"))]
+     mod signal {
+         use libc;
+         use super::sighandler_t;
+ 
+         pub const SA_ONSTACK: libc::c_int = 0x0001;
+         pub const SA_SIGINFO: libc::c_int = 0x0040;
+         pub const SIGBUS: libc::c_int = 10;
+ 
+         #[cfg(target_os = "macos")]
+         pub const SIGSTKSZ: libc::size_t = 131072;
+         #[cfg(target_os = "openbsd")]
+         pub const SIGSTKSZ: libc::size_t = 40960;
+ 
++        #[cfg(target_os = "bitrig")]
++        pub const SIGSTKSZ: libc::size_t = 40960;
++
+         pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
+ 
+         pub type sigset_t = u32;
+ 
+         // This structure has more fields, but we're not all that interested in
+         // them.
+         #[cfg(target_os = "macos")]
+         #[repr(C)]
+@@ -232,24 +238,24 @@ mod imp {
+             pub si_errno: libc::c_int,
+             pub si_code: libc::c_int,
+             pub pid: libc::pid_t,
+             pub uid: libc::uid_t,
+             pub status: libc::c_int,
+             pub si_addr: *mut libc::c_void
+         }
+ 
+-        #[cfg(target_os = "openbsd")]
++        #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+         #[repr(C)]
+         pub struct siginfo {
+             pub si_signo: libc::c_int,
+             pub si_code: libc::c_int,
+             pub si_errno: libc::c_int,
+-            // union
+-            pub si_addr: *mut libc::c_void,
++            //union
++            pub si_addr: *mut libc::c_void
+         }
+ 
+         #[repr(C)]
+         pub struct sigaltstack {
+             pub ss_sp: *mut libc::c_void,
+             pub ss_size: libc::size_t,
+             pub ss_flags: libc::c_int
+         }
+@@ -272,16 +278,17 @@ mod imp {
+ 
+         pub fn sigaltstack(ss: *const sigaltstack,
+                            oss: *mut sigaltstack) -> libc::c_int;
+     }
+ }
+ 
+ #[cfg(not(any(target_os = "linux",
+               target_os = "macos",
++              target_os = "bitrig",
+               target_os = "openbsd")))]
+ mod imp {
+     use libc;
+ 
+     pub unsafe fn init() {
+     }
+ 
+     pub unsafe fn cleanup() {
+diff --git a/src/libstd/sys/unix/sync.rs b/src/libstd/sys/unix/sync.rs
+index bc93513..c7d7049 100644
+--- a/src/libstd/sys/unix/sync.rs
++++ b/src/libstd/sys/unix/sync.rs
+@@ -41,16 +41,17 @@ extern {
+     pub fn pthread_rwlock_tryrdlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_wrlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_trywrlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+     pub fn pthread_rwlock_unlock(lock: *mut pthread_rwlock_t) -> libc::c_int;
+ }
+ 
+ #[cfg(any(target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ mod os {
+     use libc;
+ 
+     pub type pthread_mutex_t = *mut libc::c_void;
+     pub type pthread_cond_t = *mut libc::c_void;
+     pub type pthread_rwlock_t = *mut libc::c_void;
+ 
+diff --git a/src/libstd/sys/unix/thread.rs b/src/libstd/sys/unix/thread.rs
+index 6f030ee..2a9531f 100644
+--- a/src/libstd/sys/unix/thread.rs
++++ b/src/libstd/sys/unix/thread.rs
+@@ -28,16 +28,17 @@ pub type StartFn = extern "C" fn(*mut libc::c_void) -> rust_thread_return;
+ 
+ #[no_stack_check]
+ pub extern fn thread_start(main: *mut libc::c_void) -> rust_thread_return {
+     return start_thread(main);
+ }
+ 
+ #[cfg(all(not(target_os = "linux"),
+           not(target_os = "macos"),
++          not(target_os = "bitrig"),
+           not(target_os = "openbsd")))]
+ pub mod guard {
+     pub unsafe fn current() -> uint {
+         0
+     }
+ 
+     pub unsafe fn main() -> uint {
+         0
+@@ -45,38 +46,42 @@ pub mod guard {
+ 
+     pub unsafe fn init() {
+     }
+ }
+ 
+ 
+ #[cfg(any(target_os = "linux",
+           target_os = "macos",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ pub mod guard {
+     use super::*;
+     #[cfg(any(target_os = "linux",
+               target_os = "android",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     use mem;
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     use ptr;
+     use libc;
+     use libc::funcs::posix88::mman::{mmap};
+     use libc::consts::os::posix88::{PROT_NONE,
+                                     MAP_PRIVATE,
+                                     MAP_ANON,
+                                     MAP_FAILED,
+                                     MAP_FIXED};
+ 
+     // These are initialized in init() and only read from after
+     static mut PAGE_SIZE: uint = 0;
+     static mut GUARD_PAGE: uint = 0;
+ 
+-    #[cfg(any(target_os = "macos", target_os = "openbsd"))]
++    #[cfg(any(target_os = "macos", 
++              target_os = "bitrig",
++              target_os = "openbsd"))]
+     unsafe fn get_stack_start() -> *mut libc::c_void {
+         current() as *mut libc::c_void
+     }
+ 
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     unsafe fn get_stack_start() -> *mut libc::c_void {
+         let mut attr: libc::pthread_attr_t = mem::zeroed();
+         if pthread_getattr_np(pthread_self(), &mut attr) != 0 {
+@@ -184,16 +189,32 @@ pub mod guard {
+             panic!("failed to get stack information");
+         }
+         if pthread_attr_destroy(&mut attr) != 0 {
+             panic!("failed to destroy thread attributes");
+         }
+ 
+         stackaddr as uint + guardsize as uint
+     }
++
++    #[cfg(target_os = "bitrig")]
++    pub unsafe fn current() -> uint {
++      let mut current_stack: stack_t = mem::zeroed();
++      if pthread_stackseg_np(pthread_self(), &mut current_stack) != 0 {
++        panic!("failed to get current stack: pthread_stackseg_np")
++      }
++
++      if pthread_main_np() == 1 {
++        // main thread
++        current_stack.ss_sp as uint - current_stack.ss_size as uint + 3 * PAGE_SIZE as uint
++      } else {
++        // new thread
++        current_stack.ss_sp as uint - current_stack.ss_size as uint
++      }
++    }
+ }
+ 
+ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
+     let mut native: libc::pthread_t = mem::zeroed();
+     let mut attr: libc::pthread_attr_t = mem::zeroed();
+     assert_eq!(pthread_attr_init(&mut attr), 0);
+     assert_eq!(pthread_attr_setdetachstate(&mut attr,
+                                            PTHREAD_CREATE_JOINABLE), 0);
+@@ -245,16 +266,17 @@ pub unsafe fn set_name(name: &str) {
+         unsafe {
+             mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(), cname.as_ptr());
+         }
+     }
+ }
+ 
+ #[cfg(any(target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ pub unsafe fn set_name(name: &str) {
+     // pthread_set_name_np() since almost forever on all BSDs
+     let cname = CString::from_slice(name.as_bytes());
+     pthread_set_name_np(pthread_self(), cname.as_ptr());
+ }
+ 
+ #[cfg(any(target_os = "macos", target_os = "ios"))]
+@@ -327,24 +349,33 @@ extern {
+ #[cfg(any(target_os = "macos", target_os = "ios"))]
+ extern {
+     pub fn pthread_self() -> libc::pthread_t;
+     pub fn pthread_get_stackaddr_np(thread: libc::pthread_t) -> *mut libc::c_void;
+     pub fn pthread_get_stacksize_np(thread: libc::pthread_t) -> libc::size_t;
+     fn pthread_setname_np(name: *const libc::c_char) -> libc::c_int;
+ }
+ 
++#[cfg(target_os = "bitrig")]
++extern {
++    pub fn pthread_self() -> libc::pthread_t;
++    pub fn pthread_stackseg_np(thread: libc::pthread_t,
++                              sinfo: *mut stack_t) -> libc::c_uint;
++    pub fn pthread_main_np() -> libc::c_uint;
++    fn pthread_set_name_np(tid: libc::pthread_t, name: *const libc::c_char);
++}
++
+ #[cfg(target_os = "openbsd")]
+ extern {
+         pub fn pthread_stackseg_np(thread: libc::pthread_t,
+                                    sinfo: *mut stack_t) -> libc::c_uint;
+         pub fn pthread_main_np() -> libc::c_uint;
+ }
+ 
+-#[cfg(target_os = "openbsd")]
++#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+ #[repr(C)]
+ pub struct stack_t {
+     pub ss_sp: *mut libc::c_void,
+     pub ss_size: libc::size_t,
+     pub ss_flags: libc::c_int,
+ }
+ 
+ extern {
+diff --git a/src/libstd/sys/unix/thread_local.rs b/src/libstd/sys/unix/thread_local.rs
+index 62d9a33..9b7079e 100644
+--- a/src/libstd/sys/unix/thread_local.rs
++++ b/src/libstd/sys/unix/thread_local.rs
+@@ -38,23 +38,25 @@ pub unsafe fn destroy(key: Key) {
+ }
+ 
+ #[cfg(any(target_os = "macos",
+           target_os = "ios"))]
+ type pthread_key_t = ::libc::c_ulong;
+ 
+ #[cfg(any(target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ type pthread_key_t = ::libc::c_int;
+ 
+ #[cfg(not(any(target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd")))]
+ type pthread_key_t = ::libc::c_uint;
+ 
+ extern {
+     fn pthread_key_create(key: *mut pthread_key_t,
+                           dtor: Option<unsafe extern fn(*mut u8)>) -> c_int;
+     fn pthread_key_delete(key: pthread_key_t) -> c_int;
+     fn pthread_getspecific(key: pthread_key_t) -> *mut u8;
+diff --git a/src/libstd/sys/unix/time.rs b/src/libstd/sys/unix/time.rs
+index bddf7b0..7016a70 100644
+--- a/src/libstd/sys/unix/time.rs
++++ b/src/libstd/sys/unix/time.rs
+@@ -75,18 +75,21 @@ mod inner {
+ 
+     const NSEC_PER_SEC: i64 = 1_000_000_000;
+ 
+     pub struct SteadyTime {
+         t: libc::timespec,
+     }
+ 
+     // Apparently android provides this in some other library?
++    // Bitrig's RT extensions are in the C library, not a separate librt
+     // OpenBSD provide it via libc
+-    #[cfg(not(any(target_os = "android", target_os = "openbsd")))]
++    #[cfg(not(any(target_os = "android", 
++                  target_os = "bitrig",
++                  target_os = "openbsd")))]
+     #[link(name = "rt")]
+     extern {}
+ 
+     extern {
+         fn clock_gettime(clk_id: libc::c_int, tp: *mut libc::timespec) -> libc::c_int;
+     }
+ 
+     impl SteadyTime {
+diff --git a/src/libstd/sys/unix/tty.rs b/src/libstd/sys/unix/tty.rs
+index 3a79047..8e60bbf 100644
+--- a/src/libstd/sys/unix/tty.rs
++++ b/src/libstd/sys/unix/tty.rs
+@@ -17,16 +17,17 @@ use sys::c;
+ use sys_common;
+ 
+ pub struct TTY {
+     pub fd: FileDesc,
+ }
+ 
+ #[cfg(any(target_os = "macos",
+           target_os = "freebsd",
++          target_os = "bitrig",
+           target_os = "openbsd"))]
+ const TIOCGWINSZ: c_ulong = 0x40087468;
+ 
+ #[cfg(any(target_os = "linux", target_os = "android"))]
+ const TIOCGWINSZ: c_ulong = 0x00005413;
+ 
+ impl TTY {
+     pub fn new(fd: c_int) -> IoResult<TTY> {
+@@ -50,16 +51,17 @@ impl TTY {
+     pub fn set_raw(&mut self, _raw: bool) -> IoResult<()> {
+         Err(sys_common::unimpl())
+     }
+ 
+     #[cfg(any(target_os = "linux",
+               target_os = "android",
+               target_os = "macos",
+               target_os = "freebsd",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
+         unsafe {
+             #[repr(C)]
+             struct winsize {
+                 ws_row: u16,
+                 ws_col: u16,
+                 ws_xpixel: u16,
+diff --git a/src/libsyntax/abi.rs b/src/libsyntax/abi.rs
+index de3fa113..2cf157b 100644
+--- a/src/libsyntax/abi.rs
++++ b/src/libsyntax/abi.rs
+@@ -19,16 +19,17 @@ use std::fmt;
+ pub enum Os {
+     OsWindows,
+     OsMacos,
+     OsLinux,
+     OsAndroid,
+     OsFreebsd,
+     OsiOS,
+     OsDragonfly,
++    OsBitrig,
+     OsOpenbsd,
+ }
+ 
+ #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
+ pub enum Abi {
+     // NB: This ordering MUST match the AbiDatas array below.
+     // (This is ensured by the test indices_are_correct().)
+ 
+@@ -131,16 +132,17 @@ impl fmt::Display for Os {
+         match *self {
+             OsLinux => "linux".fmt(f),
+             OsWindows => "windows".fmt(f),
+             OsMacos => "macos".fmt(f),
+             OsiOS => "ios".fmt(f),
+             OsAndroid => "android".fmt(f),
+             OsFreebsd => "freebsd".fmt(f),
+             OsDragonfly => "dragonfly".fmt(f),
++            OsBitrig => "bitrig".fmt(f),
+             OsOpenbsd => "openbsd".fmt(f),
+         }
+     }
+ }
+ 
+ #[allow(non_snake_case)]
+ #[test]
+ fn lookup_Rust() {
+diff --git a/src/rt/arch/x86_64/morestack.S b/src/rt/arch/x86_64/morestack.S
+index c82da57..cf2b9b9 100644
+--- a/src/rt/arch/x86_64/morestack.S
++++ b/src/rt/arch/x86_64/morestack.S
+@@ -10,23 +10,23 @@
+ #if defined(__APPLE__)
+ #define MORESTACK               ___morestack
+ #else
+ #define MORESTACK               __morestack
+ #endif
+ 
+ #if defined(__APPLE__)
+ #define EXHAUSTED               _rust_stack_exhausted
+-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
++#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__Bitrig__)
+ #define EXHAUSTED               rust_stack_exhausted@PLT
+ #else
+ #define EXHAUSTED               rust_stack_exhausted
+ #endif
+ 
+-#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
++#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__Bitrig__)
+ 	.hidden MORESTACK
+ #else
+ #if defined(__APPLE__)
+ 	.private_extern MORESTACK
+ #endif
+ #endif
+ 
+ #ifdef __ELF__
+diff --git a/src/rt/rust_builtin.c b/src/rt/rust_builtin.c
+index 382cbf0..3f7badc 100644
+--- a/src/rt/rust_builtin.c
++++ b/src/rt/rust_builtin.c
+@@ -42,17 +42,18 @@
+ #include "valgrind/valgrind.h"
+ 
+ #ifdef __APPLE__
+ #if (TARGET_OS_IPHONE)
+ extern char **environ;
+ #endif
+ #endif
+ 
+-#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__) || defined(__OpenBSD__)
++#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || \
++    defined(__DragonFly__) || defined(__Bitrig__) || defined(__OpenBSD__)
+ extern char **environ;
+ #endif
+ 
+ #if defined(__WIN32__)
+ char**
+ rust_env_pairs() {
+     return 0;
+ }
+@@ -194,17 +195,292 @@ rust_unset_sigprocmask() {
+ 
+ #if defined(__DragonFly__)
+ #include <errno.h>
+ // In DragonFly __error() is an inline function and as such
+ // no symbol exists for it.
+ int *__dfly_error(void) { return __error(); }
+ #endif
+ 
+-#if defined(__OpenBSD__)
++#if defined(__Bitrig__)
++#include <stdio.h>
++#include <sys/param.h>
++#include <sys/sysctl.h>
++#include <limits.h>
++
++int rust_get_path(void *p, size_t* sz)
++{
++  int mib[4];
++  char *eq = NULL;
++  char *key = NULL;
++  char *val = NULL;
++  char **menv = NULL;
++  size_t maxlen, len;
++  int nenv = 0;
++  int i;
++
++  if ((p == NULL) && (sz == NULL))
++    return -1;
++
++  /* get the argv array */
++  mib[0] = CTL_KERN;
++  mib[1] = KERN_PROC_ARGS;
++  mib[2] = getpid();
++  mib[3] = KERN_PROC_ENV;
++
++  /* get the number of bytes needed to get the env */
++  maxlen = 0;
++  if (sysctl(mib, 4, NULL, &maxlen, NULL, 0) == -1)
++    return -1;
++
++  /* allocate the buffer */
++  if ((menv = calloc(maxlen, sizeof(char))) == NULL)
++    return -1;
++
++  /* get the env array */
++  if (sysctl(mib, 4, menv, &maxlen, NULL, 0) == -1)
++  {
++    free(menv);
++    return -1;
++  }
++
++  mib[3] = KERN_PROC_NENV;
++  len = sizeof(int);
++  /* get the length of env array */
++  if (sysctl(mib, 4, &nenv, &len, NULL, 0) == -1)
++  {
++    free(menv);
++    return -1;
++  }
++
++  /* find _ key and resolve the value */
++  for (i = 0; i < nenv; i++)
++  {
++    if ((eq = strstr(menv[i], "=")) == NULL)
++      continue;
++
++    key = menv[i];
++    val = eq + 1;
++    *eq = '\0';
++
++    if (strncmp(key, "PATH", maxlen) != 0)
++      continue;
++
++    if (p == NULL)
++    {
++      /* return the length of the value + NUL */
++      *sz = strnlen(val, maxlen) + 1;
++      free(menv);
++      return 0;
++    }
++    else
++    {
++      /* copy *sz bytes to the output buffer */
++      memcpy(p, val, *sz);
++      free(menv);
++      return 0;
++    }
++  }
++
++  free(menv);
++  return -1;
++}
++
++int rust_get_path_array(void * p, size_t * sz)
++{
++  char *path, *str;
++  char **buf;
++  int i, num;
++  size_t len;
++
++  if ((p == NULL) && (sz == NULL))
++    return -1;
++
++  /* get the length of the PATH value */
++  if (rust_get_path(NULL, &len) == -1)
++    return -1;
++
++  if (len == 0)
++    return -1;
++
++  /* allocate the buffer */
++  if ((path = calloc(len, sizeof(char))) == NULL)
++    return -1;
++
++  /* get the PATH value */
++  if (rust_get_path(path, &len) == -1)
++  {
++    free(path);
++    return -1;
++  }
++
++  /* count the number of parts in the PATH */
++  num = 1;
++  for(str = path; *str != '\0'; str++)
++  {
++    if (*str == ':')
++      num++;
++  }
++
++  /* calculate the size of the buffer for the 2D array */
++  len = (num * sizeof(char*) + 1) + strlen(path) + 1;
++
++  if (p == NULL)
++  {
++    free(path);
++    *sz = len;
++    return 0;
++  }
++
++  /* make sure we have enough buffer space */
++  if (*sz < len)
++  {
++    free(path);
++    return -1;
++  }
++
++  /* zero out the buffer */
++  buf = (char**)p;
++  memset(buf, 0, *sz);
++
++  /* copy the data into the right place */
++  str = p + ((num+1) * sizeof(char*));
++  memcpy(str, path, strlen(path));
++
++  /* parse the path into it's parts */
++  for (i = 0; i < num && (buf[i] = strsep(&str, ":")) != NULL; i++) {;}
++  buf[num] = NULL;
++
++  free(path);
++  return 0;
++}
++
++int rust_get_argv_zero(void* p, size_t* sz)
++{
++  int mib[4];
++  char **argv = NULL;
++  size_t len;
++
++  if ((p == NULL) && (sz == NULL))
++    return -1;
++
++  /* get the argv array */
++  mib[0] = CTL_KERN;
++  mib[1] = KERN_PROC_ARGS;
++  mib[2] = getpid();
++  mib[3] = KERN_PROC_ARGV;
++
++  /* request KERN_PROC_ARGV size */
++  len = 0;
++  if (sysctl(mib, 4, NULL, &len, NULL, 0) == -1)
++    return -1;
++
++  /* allocate buffer to receive the values */
++  if ((argv = malloc(len)) == NULL)
++    return -1;
++
++  /* get the argv array */
++  if (sysctl(mib, 4, argv, &len, NULL, 0) == -1)
++  {
++    free(argv);
++    return -1;
++  }
++
++  /* get length of argv[0] */
++  len = strnlen(argv[0], len) + 1;
++
++  if (p == NULL)
++  {
++    *sz = len;
++    free(argv);
++    return 0;
++  }
++
++  if (*sz < len)
++  {
++    free(argv);
++    return -1;
++  }
++
++  memset(p, 0, len);
++  memcpy(p, argv[0], len);
++  free(argv);
++  return 0;
++}
++
++const char * rust_load_self()
++{
++  static char *self = NULL;
++  char *argv0;
++  char **paths;
++  size_t sz;
++  int i;
++  char buf[2*PATH_MAX], exe[2*PATH_MAX];
++
++  if (self != NULL)
++    return self;
++
++  if (rust_get_argv_zero(NULL, &sz) == -1)
++    return NULL;
++  if ((argv0 = calloc(sz, sizeof(char))) == NULL)
++    return NULL;
++  if (rust_get_argv_zero(argv0, &sz) == -1)
++  {
++    free(argv0);
++    return NULL;
++  }
++
++  /* if argv0 is a relative or absolute path, resolve it with realpath */
++  if ((*argv0 == '.') || (*argv0 == '/') || (strstr(argv0, "/") != NULL))
++  {
++    self = realpath(argv0, NULL);
++    free(argv0);
++    return self;
++  }
++
++  /* get the path array */
++  if (rust_get_path_array(NULL, &sz) == -1)
++  {
++    free(argv0);
++    return NULL;
++  }
++  if ((paths = calloc(sz, sizeof(char))) == NULL)
++  {
++    free(argv0);
++    return NULL;
++  }
++  if (rust_get_path_array(paths, &sz) == -1)
++  {
++    free(argv0);
++    free(paths);
++    return NULL;
++  }
++
++  for(i = 0; paths[i] != NULL; i++)
++  {
++    snprintf(buf, 2*PATH_MAX, "%s/%s", paths[i], argv0);
++    if (realpath(buf, exe) == NULL)
++      continue;
++
++    if (access(exe, F_OK | X_OK) == -1)
++      continue;
++
++    self = strdup(exe);
++    free(argv0);
++    free(paths);
++    return self;
++  }
++
++  free(argv0);
++  free(paths);
++  return NULL;
++}
++
++#elif defined(__OpenBSD__)
++
+ #include <sys/param.h>
+ #include <sys/sysctl.h>
+ #include <limits.h>
+ 
+ const char * rust_load_self() {
+     static char *self = NULL;
+ 
+     if (self == NULL) {
+@@ -242,16 +518,17 @@ const char * rust_load_self() {
+             self = NULL;
+ 
+         /* cleanup */
+         free(argv);
+     }
+ 
+     return (self);
+ }
++
+ #endif
+ 
+ //
+ // Local Variables:
+ // mode: C++
+ // fill-column: 78;
+ // indent-tabs-mode: nil
+ // c-basic-offset: 4
+diff --git a/src/test/run-pass/dupe-first-attr.rc b/src/test/run-pass/dupe-first-attr.rc
+index 30d6b93..eb66423 100644
+--- a/src/test/run-pass/dupe-first-attr.rc
++++ b/src/test/run-pass/dupe-first-attr.rc
+@@ -21,12 +21,15 @@ mod hello;
+ mod hello;
+ 
+ #[cfg(target_os = "freebsd")]
+ mod hello;
+ 
+ #[cfg(target_os = "dragonfly")]
+ mod hello;
+ 
++#[cfg(target_os = "bitrig")]
++mod hello;
++
+ #[cfg(target_os = "android")]
+ mod hello;
+ 
+ pub fn main() { }
+diff --git a/src/test/run-pass/intrinsic-alignment.rs b/src/test/run-pass/intrinsic-alignment.rs
+index 07f021e..1a3e485 100644
+--- a/src/test/run-pass/intrinsic-alignment.rs
++++ b/src/test/run-pass/intrinsic-alignment.rs
+@@ -37,16 +37,28 @@ mod m {
+     pub fn main() {
+         unsafe {
+             assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
+             assert_eq!(::rusti::min_align_of::<u64>(), 8u);
+         }
+     }
+ }
+ 
++#[cfg(target_os = "bitrig")]
++mod m {
++    #[main]
++    #[cfg(target_arch = "x86_64")]
++    pub fn main() {
++        unsafe {
++            assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
++            assert_eq!(::rusti::min_align_of::<u64>(), 8u);
++        }
++    }
++}
++
+ #[cfg(target_os = "windows")]
+ mod m {
+     #[main]
+     #[cfg(target_arch = "x86")]
+     pub fn main() {
+         unsafe {
+             assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
+             assert_eq!(::rusti::min_align_of::<u64>(), 8u);
+diff --git a/src/test/run-pass/lang-item-public.rs b/src/test/run-pass/lang-item-public.rs
+index 2d70fa0..af85850 100644
+--- a/src/test/run-pass/lang-item-public.rs
++++ b/src/test/run-pass/lang-item-public.rs
+@@ -32,17 +32,17 @@ extern {}
+ #[cfg(target_os = "freebsd")]
+ #[link(name = "c")]
+ extern {}
+ 
+ #[cfg(target_os = "dragonfly")]
+ #[link(name = "c")]
+ extern {}
+ 
+-#[cfg(target_os = "openbsd")]
++#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+ #[link(name = "c")]
+ extern {}
+ 
+ #[cfg(target_os = "macos")]
+ #[link(name = "System")]
+ extern {}
+ 
+ #[start]
+diff --git a/src/test/run-pass/out-of-stack-new-thread-no-split.rs b/src/test/run-pass/out-of-stack-new-thread-no-split.rs
+index c9e2f89..dcab727 100644
+--- a/src/test/run-pass/out-of-stack-new-thread-no-split.rs
++++ b/src/test/run-pass/out-of-stack-new-thread-no-split.rs
+@@ -7,16 +7,17 @@
+ // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ // option. This file may not be copied, modified, or distributed
+ // except according to those terms.
+ 
+ //ignore-android
+ //ignore-freebsd
+ //ignore-ios
+ //ignore-dragonfly
++//ignore-bitrig
+ 
+ #![feature(asm)]
+ 
+ use std::old_io::process::Command;
+ use std::os;
+ use std::thread::Thread;
+ 
+ // lifted from the test module
+diff --git a/src/test/run-pass/out-of-stack-no-split.rs b/src/test/run-pass/out-of-stack-no-split.rs
+index 846fbd4..330608e 100644
+--- a/src/test/run-pass/out-of-stack-no-split.rs
++++ b/src/test/run-pass/out-of-stack-no-split.rs
+@@ -8,16 +8,17 @@
+ // option. This file may not be copied, modified, or distributed
+ // except according to those terms.
+ 
+ //ignore-android
+ //ignore-linux
+ //ignore-freebsd
+ //ignore-ios
+ //ignore-dragonfly
++//ignore-bitrig
+ 
+ #![feature(asm)]
+ 
+ use std::old_io::process::Command;
+ use std::os;
+ 
+ // lifted from the test module
+ // Inlining to avoid llvm turning the recursive functions into tail calls,
+diff --git a/src/test/run-pass/rec-align-u64.rs b/src/test/run-pass/rec-align-u64.rs
+index 5330490..5df495e 100644
+--- a/src/test/run-pass/rec-align-u64.rs
++++ b/src/test/run-pass/rec-align-u64.rs
+@@ -50,16 +50,25 @@ mod m {
+ 
+     #[cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64"))]
+     pub mod m {
+         pub fn align() -> uint { 8u }
+         pub fn size() -> uint { 16u }
+     }
+ }
+ 
++#[cfg(target_os = "bitrig")]
++mod m {
++    #[cfg(target_arch = "x86_64")]
++    pub mod m {
++        pub fn align() -> uint { 8u }
++        pub fn size() -> uint { 16u }
++    }
++}
++
+ #[cfg(target_os = "windows")]
+ mod m {
+     #[cfg(target_arch = "x86")]
+     pub mod m {
+         pub fn align() -> uint { 8u }
+         pub fn size() -> uint { 16u }
+     }
+ 
+diff --git a/src/test/run-pass/x86stdcall.rs b/src/test/run-pass/x86stdcall.rs
+index 75a8f60..7e21c35 100644
+--- a/src/test/run-pass/x86stdcall.rs
++++ b/src/test/run-pass/x86stdcall.rs
+@@ -29,11 +29,12 @@ pub fn main() {
+         assert_eq!(expected, actual);
+     }
+ }
+ 
+ #[cfg(any(target_os = "macos",
+           target_os = "linux",
+           target_os = "freebsd",
+           target_os = "dragonfly",
++          target_os = "bitrig",
+           target_os = "openbsd",
+           target_os = "android"))]
+ pub fn main() { }

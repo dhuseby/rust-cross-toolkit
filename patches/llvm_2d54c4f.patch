@@ -1,0 +1,235 @@
+diff --git a/Makefile.config.in b/Makefile.config.in
+index d34a2d5..03f7961 100644
+--- a/Makefile.config.in
++++ b/Makefile.config.in
+@@ -96,21 +96,21 @@ ifneq ($(INTERNAL_PREFIX),)
+ PROJ_internal_prefix := $(INTERNAL_PREFIX)
+ else
+ PROJ_internal_prefix := $(prefix)
+ endif
+ 
+ PROJ_bindir     := $(PROJ_prefix)/bin
+ PROJ_libdir     := $(PROJ_prefix)/lib
+ PROJ_datadir    := $(PROJ_prefix)/share
+-PROJ_docsdir    := $(PROJ_prefix)/docs/llvm
++PROJ_docsdir    := $(PROJ_prefix)/share/docs/llvm
+ PROJ_etcdir     := $(PROJ_prefix)/etc/llvm
+ PROJ_includedir := $(PROJ_prefix)/include
+ PROJ_infodir    := $(PROJ_prefix)/info
+-PROJ_mandir     := $(PROJ_prefix)/share/man
++PROJ_mandir     := $(PROJ_prefix)/man
+ 
+ # Determine if we're on a unix type operating system
+ LLVM_ON_UNIX:=@LLVM_ON_UNIX@
+ LLVM_ON_WIN32:=@LLVM_ON_WIN32@
+ 
+ # Host operating system for which LLVM will be run.
+ OS=@OS@
+ HOST_OS=@HOST_OS@
+diff --git a/autoconf/config.sub b/autoconf/config.sub
+index 673d62b..612bff3 100755
+--- a/autoconf/config.sub
++++ b/autoconf/config.sub
+@@ -1349,17 +1349,17 @@ case $os in
+ 	      | -linux-newlib* | -linux-uclibc* \
+ 	      | -uxpv* | -beos* | -mpeix* | -udk* \
+ 	      | -interix* | -uwin* | -mks* | -rhapsody* | -darwin* | -opened* \
+ 	      | -openstep* | -oskit* | -conix* | -pw32* | -nonstopux* \
+ 	      | -storm-chaos* | -tops10* | -tenex* | -tops20* | -its* \
+ 	      | -os2* | -vos* | -palmos* | -uclinux* | -nucleus* \
+ 	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
+ 	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
+-	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es*)
++	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es* | -bitrig*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
+ 	-qnx*)
+ 		case $basic_machine in
+ 		    x86-* | i*86-*)
+ 			;;
+ 		    *)
+ 			os=-nto$os
+diff --git a/configure b/configure
+index ba5ecbe..9b7722c 100755
+--- a/configure
++++ b/configure
+@@ -3961,16 +3961,21 @@ else
+     llvm_cv_no_link_all_option="-Wl,--no-whole-archive"
+     llvm_cv_os_type="NetBSD"
+     llvm_cv_platform_type="Unix" ;;
+   *-*-dragonfly*)
+     llvm_cv_link_all_option="-Wl,--whole-archive"
+     llvm_cv_no_link_all_option="-Wl,--no-whole-archive"
+     llvm_cv_os_type="DragonFly"
+     llvm_cv_platform_type="Unix" ;;
++  *-*-bitrig*)
++    llvm_cv_link_all_option="-Wl,--whole-archive"
++    llvm_cv_no_link_all_option="-Wl,--no-whole-archive"
++    llvm_cv_os_type="DragonFly"
++    llvm_cv_platform_type="Unix" ;;
+   *-*-hpux*)
+     llvm_cv_link_all_option="-Wl,--whole-archive"
+     llvm_cv_no_link_all_option="-Wl,--no-whole-archive"
+     llvm_cv_os_type="HP-UX"
+     llvm_cv_platform_type="Unix" ;;
+   *-*-interix*)
+     llvm_cv_link_all_option="-Wl,--whole-archive"
+     llvm_cv_no_link_all_option="-Wl,--no-whole-archive"
+@@ -4047,16 +4052,18 @@ else
+   *-*-kfreebsd-gnu)
+     llvm_cv_target_os_type="GNU/kFreeBSD" ;;
+   *-*-openbsd*)
+     llvm_cv_target_os_type="OpenBSD" ;;
+   *-*-netbsd*)
+     llvm_cv_target_os_type="NetBSD" ;;
+   *-*-dragonfly*)
+     llvm_cv_target_os_type="DragonFly" ;;
++  *-*-bitrig*)
++    llvm_cv_target_os_type="Bitrig" ;;
+   *-*-hpux*)
+     llvm_cv_target_os_type="HP-UX" ;;
+   *-*-interix*)
+     llvm_cv_target_os_type="Interix" ;;
+   *-*-linux*)
+     llvm_cv_target_os_type="Linux" ;;
+   *-*-gnu*)
+     llvm_cv_target_os_type="GNU" ;;
+@@ -9199,23 +9206,34 @@ cat >>confdefs.h <<\_ACEOF
+ #define HAVE_MALLINFO 1
+ _ACEOF
+ 
+ fi
+ 
+ 
+ if test "$LLVM_ENABLE_THREADS" -eq 1 && test "$ENABLE_PTHREADS" -eq 1 ; then
+ 
++if test "$llvm_cv_os_type" = "Bitrig" ; then
++{ echo "$as_me:$LINENO: checking for pthread_mutex_init in -pthread" >&5
++echo $ECHO_N "checking for pthread_mutex_init in -pthread... $ECHO_C" >&6; }
++else
+ { echo "$as_me:$LINENO: checking for pthread_mutex_init in -lpthread" >&5
+ echo $ECHO_N "checking for pthread_mutex_init in -lpthread... $ECHO_C" >&6; }
++fi
+ if test "${ac_cv_lib_pthread_pthread_mutex_init+set}" = set; then
+   echo $ECHO_N "(cached) $ECHO_C" >&6
+ else
+   ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lpthread  $LIBS"
++if test "$llvm_cv_os_type" = "Bitrig" ; then
++  echo $ECHO_N "Using Bitrig -pthread form..." $ECHO_C >&6
++  LIBS="-pthread $LIBS"
++else
++  echo $ECHO_N "Using -lpthread form..." $ECHO_C >&6
++  LIBS="-lpthread  $LIBS"
++fi
+ cat >conftest.$ac_ext <<_ACEOF
+ /* confdefs.h.  */
+ _ACEOF
+ cat confdefs.h >>conftest.$ac_ext
+ cat >>conftest.$ac_ext <<_ACEOF
+ /* end confdefs.h.  */
+ 
+ /* Override any GCC internal prototype to avoid an error.
+@@ -9281,17 +9299,23 @@ LIBS=$ac_check_lib_save_LIBS
+ fi
+ { echo "$as_me:$LINENO: result: $ac_cv_lib_pthread_pthread_mutex_init" >&5
+ echo "${ECHO_T}$ac_cv_lib_pthread_pthread_mutex_init" >&6; }
+ if test $ac_cv_lib_pthread_pthread_mutex_init = yes; then
+   cat >>confdefs.h <<_ACEOF
+ #define HAVE_LIBPTHREAD 1
+ _ACEOF
+ 
+-  LIBS="-lpthread $LIBS"
++if test "$llvm_cv_os_type" = "Bitrig" ; then
++  echo $ECHO_N "Using Bitrig -pthread form..." $ECHO_C >&6
++  LIBS="-pthread  $LIBS"
++else
++  echo $ECHO_N "Using non-Bitrig -lpthread form..." $ECHO_C >&6
++   LIBS="-lpthread $LIBS"
++fi
+ 
+ fi
+ 
+   { echo "$as_me:$LINENO: checking for library containing pthread_mutex_lock" >&5
+ echo $ECHO_N "checking for library containing pthread_mutex_lock... $ECHO_C" >&6; }
+ if test "${ac_cv_search_pthread_mutex_lock+set}" = set; then
+   echo $ECHO_N "(cached) $ECHO_C" >&6
+ else
+diff --git a/lib/Target/X86/X86Subtarget.h b/lib/Target/X86/X86Subtarget.h
+index 754b5b9..b0155cb 100644
+--- a/lib/Target/X86/X86Subtarget.h
++++ b/lib/Target/X86/X86Subtarget.h
+@@ -401,16 +401,17 @@ public:
+   bool isSLM() const { return X86ProcFamily == IntelSLM; }
+ 
+   const Triple &getTargetTriple() const { return TargetTriple; }
+ 
+   bool isTargetDarwin() const { return TargetTriple.isOSDarwin(); }
+   bool isTargetFreeBSD() const { return TargetTriple.isOSFreeBSD(); }
+   bool isTargetDragonFly() const { return TargetTriple.isOSDragonFly(); }
+   bool isTargetSolaris() const { return TargetTriple.isOSSolaris(); }
++  bool isTargetBitrig() const { return TargetTriple.isOSBitrig(); }
+ 
+   bool isTargetELF() const { return TargetTriple.isOSBinFormatELF(); }
+   bool isTargetCOFF() const { return TargetTriple.isOSBinFormatCOFF(); }
+   bool isTargetMachO() const { return TargetTriple.isOSBinFormatMachO(); }
+ 
+   bool isTargetLinux() const { return TargetTriple.isOSLinux(); }
+   bool isTargetNaCl() const { return TargetTriple.isOSNaCl(); }
+   bool isTargetNaCl32() const { return isTargetNaCl() && !is64Bit(); }
+diff --git a/projects/Makefile b/projects/Makefile
+index 08a0a6b..617e3d3 100644
+--- a/projects/Makefile
++++ b/projects/Makefile
+@@ -10,17 +10,17 @@ LEVEL=..
+ 
+ include $(LEVEL)/Makefile.config
+ 
+ # Compile all subdirs, except for the test suite, which lives in test-suite.
+ # Before 2008.06.24 it lived in llvm-test, so exclude that as well for now.
+ DIRS:= $(filter-out llvm-test test-suite,$(patsubst $(PROJ_SRC_DIR)/%/Makefile,%,$(wildcard $(PROJ_SRC_DIR)/*/Makefile)))
+ 
+ # Don't build compiler-rt, it isn't designed to be built directly.
+-DIRS := $(filter-out compiler-rt,$(DIRS))
++#DIRS := $(filter-out compiler-rt,$(DIRS))
+ 
+ # Don't build libcxx, it isn't designed to be built directly.
+-DIRS := $(filter-out libcxx,$(DIRS))
++#DIRS := $(filter-out libcxx,$(DIRS))
+ 
+ # DragonEgg may be checked out here but doesn't (yet) build directly.
+ DIRS := $(filter-out dragonegg,$(DIRS))
+ 
+ include $(PROJ_SRC_ROOT)/Makefile.rules
+diff --git a/tools/llvm-config/CMakeLists.txt b/tools/llvm-config/CMakeLists.txt
+index 50c84e6..f10d01b 100644
+--- a/tools/llvm-config/CMakeLists.txt
++++ b/tools/llvm-config/CMakeLists.txt
+@@ -1,18 +1,24 @@
+ set(LLVM_LINK_COMPONENTS support)
+ 
+ set(BUILDVARIABLES_SRCPATH ${CMAKE_CURRENT_SOURCE_DIR}/BuildVariables.inc.in)
+ set(BUILDVARIABLES_OBJPATH ${CMAKE_CURRENT_BINARY_DIR}/BuildVariables.inc)
+ 
+ # Compute the substitution values for various items.
+ get_property(LLVM_SYSTEM_LIBS_LIST TARGET LLVMSupport PROPERTY LLVM_SYSTEM_LIBS)
+-foreach(l ${LLVM_SYSTEM_LIBS_LIST})
+-  set(SYSTEM_LIBS ${SYSTEM_LIBS} "-l${l}")
+-endforeach()
++if (${CMAKE_SYSTEM_NAME} MATCHES "Bitrig")
++  foreach(l ${LLVM_SYSTEM_LIBS_LIST})
++    set(SYSTEM_LIBS ${SYSTEM_LIBS} "-${l}")
++  endforeach()
++else()
++  foreach(l ${LLVM_SYSTEM_LIBS_LIST})
++    set(SYSTEM_LIBS ${SYSTEM_LIBS} "-l${l}")
++  endforeach()
++endif()
+ string(REPLACE ";" " " SYSTEM_LIBS "${SYSTEM_LIBS}")
+ 
+ # Use configure_file to create BuildVariables.inc.
+ set(LLVM_SRC_ROOT ${LLVM_MAIN_SRC_DIR})
+ set(LLVM_OBJ_ROOT ${LLVM_BINARY_DIR})
+ set(LLVM_CPPFLAGS "${CMAKE_CPP_FLAGS} ${CMAKE_CPP_FLAGS_${uppercase_CMAKE_BUILD_TYPE}} ${LLVM_DEFINITIONS}")
+ set(LLVM_CFLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${uppercase_CMAKE_BUILD_TYPE}} ${LLVM_DEFINITIONS}")
+ set(LLVM_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${uppercase_CMAKE_BUILD_TYPE}} ${LLVM_DEFINITIONS}")
