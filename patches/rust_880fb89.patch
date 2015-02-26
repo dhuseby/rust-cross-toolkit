@@ -1,0 +1,126 @@
+diff --git a/configure b/configure
+index e722fe8..353a69f 100755
+--- a/configure
++++ b/configure
+@@ -1113,21 +1113,21 @@ then
+     "${CFG_GIT}" submodule update --recursive
+     need_ok "git failed"
+ 
+     # NB: this is just for the sake of getting the submodule SHA1 values
+     # and status written into the build log.
+     msg "git: submodule status"
+     "${CFG_GIT}" submodule status --recursive
+ 
+-    msg "git: submodule clobber"
+-    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
+-    need_ok "git failed"
+-    "${CFG_GIT}" submodule foreach --recursive git checkout .
+-    need_ok "git failed"
++    #msg "git: submodule clobber"
++    #"${CFG_GIT}" submodule foreach --recursive git clean -dxf
++    #need_ok "git failed"
++    #"${CFG_GIT}" submodule foreach --recursive git checkout .
++    #need_ok "git failed"
+ 
+     cd ${CFG_BUILD_DIR}
+ fi
+ 
+ # Configure llvm, only if necessary
+ step_msg "looking at LLVM"
+ CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
+ for t in $CFG_HOST
+diff --git a/src/liblibc/lib.rs b/src/liblibc/lib.rs
+index 8d8f6a4..74a95b3 100644
+--- a/src/liblibc/lib.rs
++++ b/src/liblibc/lib.rs
+@@ -1357,17 +1357,16 @@ pub mod types {
+                 pub type uintptr_t = u64;
+                 pub type intmax_t = i64;
+                 pub type uintmax_t = u64;
+             }
+             pub mod posix88 {
+                 use types::os::arch::c95::{c_long};
+                 pub type off_t = i64;
+                 pub type dev_t = i32;
+-                pub type ino_t = u64;
+                 pub type pid_t = i32;
+                 pub type uid_t = u32;
+                 pub type gid_t = u32;
+                 pub type useconds_t = u32;
+                 pub type mode_t = u32;
+                 pub type ssize_t = c_long;
+             }
+             pub mod posix01 {
+diff --git a/src/libstd/sys/unix/fs.rs b/src/libstd/sys/unix/fs.rs
+index 1c28d62..71b6214 100644
+--- a/src/libstd/sys/unix/fs.rs
++++ b/src/libstd/sys/unix/fs.rs
+@@ -286,39 +286,24 @@ pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
+     let dst = try!(cstr(dst));
+     mkerr_libc(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })
+ }
+ 
+ fn mkstat(stat: &libc::stat) -> FileStat {
+     // FileStat times are in milliseconds
+     fn mktime(secs: u64, nsecs: u64) -> u64 { secs * 1000 + nsecs / 1000000 }
+ 
+-    #[cfg(target_os = "bitrig")]
+-    fn ctime(stat: &libc::stat) -> u64 {
+-      mktime(stat.st_ctim.tv_sec as u64, stat.st_ctim.tv_nsec as u64)
+-    }
+-    #[cfg(not(target_os = "bitrig"))]
+     fn ctime(stat: &libc::stat) -> u64 {
+       mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64)
+     }
+ 
+-    #[cfg(target_os = "bitrig")]
+-    fn atime(stat: &libc::stat) -> u64 {
+-      mktime(stat.st_atim.tv_sec as u64, stat.st_atim.tv_nsec as u64)
+-    }
+-    #[cfg(not(target_os = "bitrig"))]
+     fn atime(stat: &libc::stat) -> u64 {
+       mktime(stat.st_atime as u64, stat.st_atime_nsec as u64)
+     }
+ 
+-    #[cfg(target_os = "bitrig")]
+-    fn mtime(stat: &libc::stat) -> u64 {
+-      mktime(stat.st_mtim.tv_sec as u64, stat.st_mtim.tv_nsec as u64)
+-    }
+-    #[cfg(not(target_os = "bitrig"))]
+     fn mtime(stat: &libc::stat) -> u64 {
+       mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64)
+     }
+ 
+     #[cfg(not(any(target_os = "linux", target_os = "android")))]
+     fn flags(stat: &libc::stat) -> u64 { stat.st_flags as u64 }
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     fn flags(_stat: &libc::stat) -> u64 { 0 }
+diff --git a/src/libstd/sys/unix/process2.rs b/src/libstd/sys/unix/process2.rs
+index 06fa5c4..8328164 100644
+--- a/src/libstd/sys/unix/process2.rs
++++ b/src/libstd/sys/unix/process2.rs
+@@ -425,16 +425,17 @@ fn translate_status(status: c_int) -> ExitStatus {
+         pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
+         pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
+     }
+ 
+     #[cfg(any(target_os = "macos",
+               target_os = "ios",
+               target_os = "freebsd",
+               target_os = "dragonfly",
++              target_os = "bitrig",
+               target_os = "openbsd"))]
+     mod imp {
+         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
+         pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
+         pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
+     }
+ 
+     if imp::WIFEXITED(status) {
+diff --git a/src/llvm b/src/llvm
+index b89c3f0..4891e63 160000
+--- a/src/llvm
++++ b/src/llvm
+@@ -1 +1 @@
+-Subproject commit b89c3f039b61edbb077771eda2ee8a718dbec7e0
++Subproject commit 4891e6382e3e8aa89d530aa18427836428c47157
