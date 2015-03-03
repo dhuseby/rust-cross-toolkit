@@ -1,0 +1,31 @@
+diff --git a/configure b/configure
+index e5333b4..8fe5bcd 100755
+--- a/configure
++++ b/configure
+@@ -1113,21 +1113,21 @@ then
+     "${CFG_GIT}" submodule update --recursive
+     need_ok "git failed"
+ 
+     # NB: this is just for the sake of getting the submodule SHA1 values
+     # and status written into the build log.
+     msg "git: submodule status"
+     "${CFG_GIT}" submodule status --recursive
+ 
+-    msg "git: submodule clobber"
+-    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
+-    need_ok "git failed"
+-    "${CFG_GIT}" submodule foreach --recursive git checkout .
+-    need_ok "git failed"
++    #msg "git: submodule clobber"
++    #"${CFG_GIT}" submodule foreach --recursive git clean -dxf
++    #need_ok "git failed"
++    #"${CFG_GIT}" submodule foreach --recursive git checkout .
++    #need_ok "git failed"
+ 
+     cd ${CFG_BUILD_DIR}
+ fi
+ 
+ # Configure llvm, only if necessary
+ step_msg "looking at LLVM"
+ CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
+ for t in $CFG_HOST

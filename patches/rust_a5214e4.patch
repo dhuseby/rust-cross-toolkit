@@ -74,10 +74,10 @@ index 1c28d62..71b6214 100644
      #[cfg(any(target_os = "linux", target_os = "android"))]
      fn flags(_stat: &libc::stat) -> u64 { 0 }
 diff --git a/src/libstd/sys/unix/process2.rs b/src/libstd/sys/unix/process2.rs
-index 06fa5c4..8328164 100644
+index b7a1b00..a7d0a86 100644
 --- a/src/libstd/sys/unix/process2.rs
 +++ b/src/libstd/sys/unix/process2.rs
-@@ -425,16 +425,17 @@ fn translate_status(status: c_int) -> ExitStatus {
+@@ -434,16 +434,17 @@ fn translate_status(status: c_int) -> ExitStatus {
          pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
          pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
      }
