@@ -52,18 +52,16 @@ patch_src(){
   cd ${TOP}/${1}
   ID=`git id`
   PATCH=${TOP}/../patches/${2}_${ID}.patch
-  if [ ! -e ${PATCH} ]; then
-    echo "${2} patch needs to be rebased to ${1} tip ${ID}"
-    exit 1
-  fi
   if [ ! -e .patched ]; then
-    echo "Patching ${TOP}/${1} with ${PATCH}"
-    patch -p1 < ${PATCH}
-    if (( $? )); then
-      echo "Failed to patch ${1}"
-      exit 1
+    if [ -e ${PATCH} ]; then
+      echo "Patching ${TOP}/${1} with ${PATCH}"
+      patch -p1 < ${PATCH}
+      if (( $? )); then
+        echo "Failed to patch ${1}"
+        exit 1
+      fi
+      date > .patched
     fi
-    date > .patched
   else
     echo "${1} already patched on:" `cat .patched` "...skipping"
   fi
@@ -75,7 +73,7 @@ bitrig_configure(){
   # configure rust
   cd ${TOP}/rust
   if [ ! -e .configured ]; then
-    ./configure --disable-docs --enable-clang --prefix=${PREFIX}
+    ./configure --disable-valgrind --enable-optimize --enable-optimize-tests --build=x86_64-unknown-bitrig --host=x86_64-unknown-bitrig --target=x86_64-unknown-bitrig
     if (( $? )); then
       echo "Failed to configure rust"
       exit 1
