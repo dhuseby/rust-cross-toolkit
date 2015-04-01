@@ -6,3 +6,5 @@ stage1-linux/
 stage1-openbsd/
 stage2-linux/
 .patched
+build.log
+snap-*

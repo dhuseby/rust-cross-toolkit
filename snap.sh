@@ -73,7 +73,7 @@ bitrig_configure(){
   # configure rust
   cd ${TOP}/rust
   if [ ! -e .configured ]; then
-    ./configure --disable-valgrind --enable-optimize --enable-optimize-tests --build=x86_64-unknown-bitrig --host=x86_64-unknown-bitrig --target=x86_64-unknown-bitrig
+    ./configure --disable-jemalloc --disable-valgrind --enable-optimize --enable-optimize-tests --build=x86_64-unknown-bitrig --host=x86_64-unknown-bitrig --target=x86_64-unknown-bitrig
     if (( $? )); then
       echo "Failed to configure rust"
       exit 1
