@@ -1,15 +1,13 @@
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
   let mut i : u8 = 0;
   loop {
     i += 1;
     i %= 255;
-    let t = Thread::spawn(move || {
+    let _ = thread::spawn(move || {
       println!("in thread: {}", i);
-      Thread::park();
-    });
-    t.unpark();
+    }).join();
   }
 }
 
