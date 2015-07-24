@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
-set -x
 
-OS=`uname -s`
+if [[ $# -lt 3 ]]; then
+  echo "Usage: stage1.sh <target> <arch> <compiler>"
+  echo "    target    -- 'bitrig', 'netbsd', etc"
+  echo "    arch      -- 'x86_64', 'i686', 'armv7', etc"
+  echo "    compiler  -- 'gcc' or 'clang'"
+  exit 1
+fi
+
+set -x
+HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
+TARGET=$1
+ARCH=$2
+COMP=$3
 STAGE=${0#*/}
 STAGE=${STAGE%%.sh}
 
@@ -15,13 +26,12 @@ setup(){
 clone(){
   if [ ! -e rust ]; then
     cd ${TOP}
-    #git cclone https://github.com/rust-lang/rust.git tmp-rust
-    #REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
-    REV="9e4e524"
-    #rm -rf tmp-rust
+    git cclone https://github.com/rust-lang/rust.git tmp-rust
+    REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
+    rm -rf tmp-rust
     git scclone https://github.com/rust-lang/rust.git rust ${REV}
     cd rust
-    git id > ${TOP}/revision.id
+    git rev-parse --short HEAD > ${TOP}/revision.id
     git submodule init
     git submodule update
   else
@@ -33,40 +43,65 @@ clone(){
 
 patch_src(){
   cd ${TOP}/${1}
-  ID=`git id`
-  PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}.patch
+  ID=`git rev-parse --short HEAD`
+  PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}_${TARGET}_${ARCH}.patch
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}_${TARGET}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${TARGET}_${ARCH}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${TARGET}.patch
+  fi
   if [ ! -e ${PATCH} ]; then
     PATCH=${TOP}/../patches/${2}_${ID}.patch
   fi
-  if [ ! -e ${PATCH} ]; then
-    echo "${2} patch needs to be rebased to ${1} tip ${ID}"
-    exit 1
-  fi
-  if [ ! -e .patched ]; then
-    echo "Patching ${TOP}/${1} with ${PATCH}"
-    patch -p1 < ${PATCH}
-    if (( $? )); then
-      echo "Failed to patch ${1}"
-      exit 1
+
+  if [ -e ${PATCH} ]; then
+    if [ ! -e .patched ]; then
+      echo "Patching ${TOP}/${1} with ${PATCH}"
+      patch -p1 < ${PATCH}
+      if (( $? )); then
+        echo "Failed to patch ${1}"
+        exit 1
+      fi
+      date > .patched
+    else
+      echo "${1} already patched on:" `cat .patched`
     fi
-    date > .patched
   else
-    echo "${1} already patched on:" `cat .patched`
+    echo "no patches for ${1}"
   fi
 }
 
-linux_configure(){
+linux_configure_clang(){
   export CC="/usr/bin/clang"
   export CXX="/usr/bin/clang++"
   export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fPIC"
   export CXXFLAGS="-std=c++11 -stdlib=libc++ -mstackrealign -I/usr/include/c++/v1/ -I/usr/include/libcxxabi -I/usr/lib/llvm-3.4/include  -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual"
   export LDFLAGS="-stdlib=libc++ -L/usr/lib/llvm-3.4/lib -L/usr/lib/x86_64-linux-gnu/ -L/lib64 -L/lib -L/usr/lib -lc++ -lc++abi -lunwind -lc -lpthread -lffi -ltinfo -ldl -lm"
 
-  # compile rust
+  # configure rust
   cd ${TOP}/rust
-  #./configure --disable-optimize --disable-docs --enable-clang --prefix=${TOP}/install
   ./configure --disable-docs --enable-clang --prefix=${TOP}/install
 }
+
+linux_configure_gcc() {
+  export CC="/usr/bin/gcc"
+  export CXX="/usr/bin/g++"
+  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fPIC"
+  export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual"
+  export LDFLAGS="-lc -lpthread -lffi -ltinfo -ldl -lm"
+  
+  # configure rust
+  cd ${TOP}/rust
+  ./configure --disable-docs --prefix=${TOP}/install
+}
+
 
 linux_build(){
   cd ${TOP}/rust
@@ -187,7 +222,7 @@ linux(){
   patch_src rust rust
   patch_src rust/src/llvm llvm
   patch_src rust/src/jemalloc jemalloc
-  linux_configure
+  linux_configure_${COMP}
   # patch again because rust ./configure resets submodules
   patch_src rust rust
   patch_src rust/src/llvm llvm
@@ -204,15 +239,22 @@ bitrig(){
   bitrig_build
 }
 
-
-if [ ${OS} == "Linux" ]; then
-  MAKE=make
-  linux
-elif [ ${OS} == "Bitrig" ]; then
-  MAKE=gmake
-  bitrig
-else
-  echo "You must run this on Linux or Bitrig!"
-  exit 1
-fi
+MAKE=make
+case ${HOST} in
+  "linux")
+    linux
+  ;;
+  "bitrig")
+    MAKE=gmake
+    bitrig
+  ;;
+  "netbsd")
+    MAKE=gmake
+    netbsd
+  ;;
+  *)
+    echo "${OS} unsupported at the moment"
+    exit 1
+  ;;
+esac
 
