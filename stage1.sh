@@ -78,6 +78,8 @@ patch_src(){
   fi
 }
 
+### LINUX FUNCTIONS ###
+
 linux_configure_clang(){
   export CC="/usr/bin/clang"
   export CXX="/usr/bin/clang++"
@@ -108,6 +110,139 @@ linux_build(){
   ${MAKE} VERBOSE=1
   ${MAKE} install
 }
+
+linux(){
+  setup
+  clone
+  # patch before configure so we can configure for target
+  patch_src rust rust
+  patch_src rust/src/llvm llvm
+  patch_src rust/src/jemalloc jemalloc
+  linux_configure_${COMP}
+  # patch again because rust ./configure resets submodules
+  patch_src rust rust
+  patch_src rust/src/llvm llvm
+  patch_src rust/src/jemalloc jemalloc
+  linux_build
+}
+
+### NETBSD FUNCTIONS ###
+
+netbsd_build_llvm(){
+  mkdir -p ${LLVM_INSTALL}
+  mkdir -p ${TARGET}
+  mkdir -p ${LLVM_TARGET}
+
+  # compile llvm
+  cd ${TOP}/rust/src
+  mkdir -p llvm-build
+  cd llvm-build
+  #../llvm/configure --prefix=${LLVM_INSTALL} --enable-debug-runtime --enable-debug-symbols
+  ../llvm/configure --prefix=${LLVM_INSTALL}
+  if (( $? )); then
+    echo "Failed to configure LLVM"
+    exit $?
+  fi
+  ${MAKE} -j2 VERBOSE=1
+  ${MAKE} VERBOSE=1 install
+
+  # copy the llvm lib files to the LLVM TARGET
+  cp `${LLVM_INSTALL}/bin/llvm-config --libfiles` ${LLVM_TARGET}
+}
+
+netbsd_build_rust_parts(){
+  # build the rustllvm pieces
+  cd ${TOP}/rust/src/rustllvm
+  #${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -g PassWrapper.cpp
+  #${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -g RustWrapper.cpp
+  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
+  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
+  ar rcs librustllvm.a PassWrapper.o RustWrapper.o	
+  cp librustllvm.a ${TARGET}
+
+  # build libcompiler-rt.a
+  cd ${TOP}/rust/src/compiler-rt
+  cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
+  ${MAKE} VERBOSE=1
+  cp ./lib/netbsd/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
+
+  # build libbacktrace.a
+  cd ${TOP}/rust/src
+  ln -s libbacktrace include
+  cd libbacktrace
+  ./configure
+  ${MAKE} VERBOSE=1
+  cp .libs/libbacktrace.a ${TARGET}
+  cd ..
+  rm -rf include
+
+  cd ${TOP}/rust/src/rt
+  ${LLVM_INSTALL}/bin/llc rust_try.ll
+  #${CC} -c -g -fPIC -o rust_try.o rust_try.s
+  #${CC} -c -g -fPIC -o record_sp.o arch/x86_64/record_sp.S
+  ${CC} -c -fPIC -o rust_try.o rust_try.s
+  ${CC} -c -fPIC -o record_sp.o arch/x86_64/record_sp.S
+  ar rcs ${TARGET}/librustrt_native.a rust_try.o record_sp.o
+
+  #cd ${TOP}/rust/src/rt
+  #${CC} -c -o context.o arch/x86_64/_context.S
+  #ar rcs ${TARGET}/libcontext_switch.a context.o
+
+  cd ${TOP}/rust/src/rt
+  #${CC} -c -g -fPIC -o rust_builtin.o rust_builtin.c
+  ${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
+  ar rcs ${TARGET}/librust_builtin.a rust_builtin.o
+
+  cd ${TOP}/rust/src/rt
+  #${CC} -c -g -fPIC -o morestack.o arch/x86_64/morestack.S
+  ${CC} -c -fPIC -o morestack.o arch/x86_64/morestack.S
+  ar rcs ${TARGET}/libmorestack.a morestack.o
+
+  cd ${TOP}/rust/src/rt
+  #${CC} -c -g -fPIC -o miniz.o miniz.c
+  ${CC} -c -fPIC -o miniz.o miniz.c
+  ar rcs ${TARGET}/libminiz.a miniz.o
+
+  cd ${TOP}/rust/src/rt/hoedown
+  ${MAKE} VERBOSE=1 libhoedown.a
+  cp libhoedown.a ${TARGET}
+}
+
+netbsd_build(){
+  export PATH=/usr/pkg/gcc49/bin:$PATH
+  export CC="/usr/pkg/gcc49/bin/gcc"
+  export CXX="/usr/pkg/gcc49/bin/g++"
+
+  LLVM_INSTALL=${TOP}/install
+  TARGET=${TOP}/libs
+  LLVM_TARGET=${TARGET}/llvm
+
+  netbsd_build_llvm
+  netbsd_build_rust_parts
+
+  # Copy NetBSD system libraries
+  mkdir -p ${TARGET}/usr/lib
+  cp -r /usr/lib/* ${TARGET}/usr/lib/
+
+  cd ${TOP}/..
+  python ${TOP}/rust/src/etc/mklldeps.py stage1/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser mcjit interpreter instrumentation" true "${LLVM_INSTALL}/bin/llvm-config"
+
+  cd ${TOP}/..
+  tar cvzf stage1.tgz stage1/libs stage1/llvmdeps.rs
+
+  echo "Please copy stage1.tgz onto your Linux machine and extract it"
+}
+
+netbsd(){
+  setup
+  clone
+  patch_src rust rust
+  patch_src rust/src/llvm llvm
+  patch_src rust/src/jemalloc jemalloc
+  netbsd_build
+}
+
+### BITRIG FUNCTIONS ###
 
 bitrig_build_llvm(){
   mkdir -p ${LLVM_INSTALL}
@@ -213,21 +348,6 @@ bitrig_build(){
   tar cvzf stage1.tgz stage1/libs stage1/llvmdeps.rs
 
   echo "Please copy stage1.tgz onto your Linux machine and extract it"
-}
-
-linux(){
-  setup
-  clone
-  # patch before configure so we can configure for bitrig
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/jemalloc jemalloc
-  linux_configure_${COMP}
-  # patch again because rust ./configure resets submodules
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/jemalloc jemalloc
-  linux_build
 }
 
 bitrig(){
