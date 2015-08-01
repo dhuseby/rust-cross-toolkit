@@ -177,12 +177,9 @@ netbsd_build_rust_parts(){
   rm -rf include
 
   cd ${TOP}/rust/src/rt
-  ${LLVM_INSTALL}/bin/llc rust_try.ll
-  #${CC} -c -g -fPIC -o rust_try.o rust_try.s
   #${CC} -c -g -fPIC -o record_sp.o arch/x86_64/record_sp.S
-  ${CC} -c -fPIC -o rust_try.o rust_try.s
   ${CC} -c -fPIC -o record_sp.o arch/x86_64/record_sp.S
-  ar rcs ${TARGET}/librustrt_native.a rust_try.o record_sp.o
+  ar rcs ${TARGET}/librustrt_native.a record_sp.o
 
   #cd ${TOP}/rust/src/rt
   #${CC} -c -o context.o arch/x86_64/_context.S
