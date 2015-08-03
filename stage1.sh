@@ -98,7 +98,7 @@ linux_configure_gcc() {
   export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fPIC"
   export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual"
   export LDFLAGS="-lc -lpthread -lffi -ltinfo -ldl -lm"
-  
+
   # configure rust
   cd ${TOP}/rust
   ./configure --disable-docs --prefix=${TOP}/install
@@ -266,7 +266,7 @@ bitrig_build_rust_parts(){
   #${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -g RustWrapper.cpp
   ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
   ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
-  ar rcs librustllvm.a PassWrapper.o RustWrapper.o	
+  ar rcs librustllvm.a PassWrapper.o RustWrapper.o
   cp librustllvm.a ${TARGET}
 
   # build libcompiler-rt.a
