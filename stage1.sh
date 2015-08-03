@@ -157,12 +157,12 @@ netbsd_build_rust_parts(){
   #${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` -g RustWrapper.cpp
   ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
   ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
-  ar rcs librustllvm.a PassWrapper.o RustWrapper.o	
+  ar rcs librustllvm.a PassWrapper.o RustWrapper.o
   cp librustllvm.a ${TARGET}
 
   # build libcompiler-rt.a
   cd ${TOP}/rust/src/compiler-rt
-  cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
+  cmake -D_LLVM_CMAKE_DIR=${LLVM_INSTALL}/share/llvm/cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
   ${MAKE} VERBOSE=1
   cp ./lib/netbsd/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
 
