@@ -117,12 +117,20 @@ linux(){
   # patch before configure so we can configure for target
   patch_src rust rust
   patch_src rust/src/llvm llvm
+  patch_src rust/src/compiler-rt compiler-rt
+  patch_src rust/src/rt/hoedown hoedown
   patch_src rust/src/jemalloc jemalloc
+  patch_src rust/src/rust-installer rust-installer
+  patch_src rust/src/liblibc libc
   linux_configure_${COMP}
   # patch again because rust ./configure resets submodules
   patch_src rust rust
   patch_src rust/src/llvm llvm
+  patch_src rust/src/compiler-rt compiler-rt
+  patch_src rust/src/rt/hoedown hoedown
   patch_src rust/src/jemalloc jemalloc
+  patch_src rust/src/rust-installer rust-installer
+  patch_src rust/src/liblibc libc
   linux_build
 }
 
@@ -235,7 +243,11 @@ netbsd(){
   clone
   patch_src rust rust
   patch_src rust/src/llvm llvm
+  patch_src rust/src/compiler-rt compiler-rt
+  patch_src rust/src/rt/hoedown hoedown
   patch_src rust/src/jemalloc jemalloc
+  patch_src rust/src/rust-installer rust-installer
+  patch_src rust/src/liblibc libc
   netbsd_build
 }
 
@@ -352,7 +364,11 @@ bitrig(){
   clone
   patch_src rust rust
   patch_src rust/src/llvm llvm
+  patch_src rust/src/compiler-rt compiler-rt
+  patch_src rust/src/rt/hoedown hoedown
   patch_src rust/src/jemalloc jemalloc
+  patch_src rust/src/rust-installer rust-installer
+  patch_src rust/src/liblibc libc
   bitrig_build
 }
 
