@@ -184,10 +184,10 @@ netbsd_build_rust_parts(){
   cd ..
   rm -rf include
 
-  cd ${TOP}/rust/src/rt
+  #cd ${TOP}/rust/src/rt
   #${CC} -c -g -fPIC -o record_sp.o arch/x86_64/record_sp.S
-  ${CC} -c -fPIC -o record_sp.o arch/x86_64/record_sp.S
-  ar rcs ${TARGET}/librustrt_native.a record_sp.o
+  #${CC} -c -fPIC -o record_sp.o arch/x86_64/record_sp.S
+  #ar rcs ${TARGET}/librustrt_native.a record_sp.o
 
   #cd ${TOP}/rust/src/rt
   #${CC} -c -o context.o arch/x86_64/_context.S
@@ -198,10 +198,10 @@ netbsd_build_rust_parts(){
   ${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
   ar rcs ${TARGET}/librust_builtin.a rust_builtin.o
 
-  cd ${TOP}/rust/src/rt
+  #cd ${TOP}/rust/src/rt
   #${CC} -c -g -fPIC -o morestack.o arch/x86_64/morestack.S
-  ${CC} -c -fPIC -o morestack.o arch/x86_64/morestack.S
-  ar rcs ${TARGET}/libmorestack.a morestack.o
+  #${CC} -c -fPIC -o morestack.o arch/x86_64/morestack.S
+  #ar rcs ${TARGET}/libmorestack.a morestack.o
 
   cd ${TOP}/rust/src/rt
   #${CC} -c -g -fPIC -o miniz.o miniz.c
@@ -230,7 +230,7 @@ netbsd_build(){
   cp -r /usr/lib/* ${TARGET}/usr/lib/
 
   cd ${TOP}/..
-  python ${TOP}/rust/src/etc/mklldeps.py stage1/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser mcjit interpreter instrumentation" true "${LLVM_INSTALL}/bin/llvm-config"
+  python ${TOP}/rust/src/etc/mklldeps.py stage1/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser mcjit interpreter instrumentation" true "${LLVM_INSTALL}/bin/llvm-config" "stdc++" "0"
 
   cd ${TOP}/..
   tar cvzf stage1.tgz stage1/libs stage1/llvmdeps.rs
