@@ -139,7 +139,7 @@ linux_build(){
   export CFG_LLVM_LINKAGE_FILE="${TOP}/rust/src/librustc_llvm/llvmdeps.rs"
   #export RUST_FLAGS="-g -Z verbose"
   export RUST_FLAGS="-Z verbose"
-  RUST_LIBS="core libc alloc rustc_unicode collections rand std arena log fmt_macros serialize term syntax flate getopts test coretest graphviz rustc_llvm rustc_back rbml rustc_data_structures rustc rustc_bitflags rustc_lint rustc_privacy rustc_resolve rustc_trans rustc_typeck rustc_borrowck rustc_resolve rustc_driver rustdoc "
+  RUST_LIBS="core libc std alloc alloc_system rustc_unicode collections rand arena log fmt_macros serialize term syntax syntax_ext flate getopts test coretest graphviz rustc_llvm rustc_front rustc_back rbml rustc_data_structures rustc rustc_bitflags rustc_lint rustc_privacy rustc_resolve rustc_mir rustc_platform_intrinsics rustc_trans rustc_typeck rustc_borrowck rustc_metadata rustc_plugin rustc_driver rustdoc"
 
   # compile rust libraries
   for lib in $RUST_LIBS; do
@@ -147,11 +147,21 @@ linux_build(){
       echo "skipping $lib"
     else
       echo "compiling $lib"
-      LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
+      if [ ${lib} != "libc" ]; then
+        LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
         ${RUSTC} --target ${CFG_COMPILER_HOST_TRIPLE} ${RUST_FLAGS} --crate-type lib -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
-      if (( $? )); then
-        echo "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
-        exit 1
+        if (( $? )); then
+          echo "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
+          exit 1
+        fi
+      else
+        LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
+        ${RUSTC} --target ${CFG_COMPILER_HOST_TRIPLE} ${RUST_FLAGS} --cfg stdbuild -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/src/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
+        #i686-unknown-freebsd/stage0/bin/rustc --cfg stage0  -O --cfg rtopt -C debug-assertions=on -g -C rpath -C prefer-dynamic -C no-stack-check --target=i686-unknown-freebsd   -L "i686-unknown-freebsd/rt" -L native="/opt/rust/build/i686-unknown-freebsd/llvm/Release+Asserts/lib"  --cfg stdbuild   --out-dir i686-unknown-freebsd/stage0/lib/rustlib/i686-unknown-freebsd/lib -C extra-filename=-db5a760f ../src/liblibc/src/lib.rs
+        if (( $? )); then
+          echo "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
+          exit 1
+        fi
       fi
     fi
   done
