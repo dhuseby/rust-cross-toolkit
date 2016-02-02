@@ -1,10 +1,6 @@
-df-tree/
-downloads/
-rust-nightly/
-target/
-stage1-linux/
-stage1-openbsd/
-stage2-linux/
+stage1*
+stage2*
+stage3*
 .patched
-build.log
+build*.log
 snap-*
