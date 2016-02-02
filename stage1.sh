@@ -111,7 +111,7 @@ linux_configure_gcc() {
 
   # configure rust
   cd ${TOP}/rust
-  ./configure --disable-docs --prefix=${TOP}/install
+  ./configure --disable-docs --enable-debug --prefix=${TOP}/install
 }
 
 linux_build(){
@@ -124,22 +124,10 @@ linux(){
   setup
   clone
   # patch before configure so we can configure for target
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/compiler-rt compiler-rt
-  patch_src rust/src/rt/hoedown hoedown
-  patch_src rust/src/jemalloc jemalloc
-  patch_src rust/src/rust-installer rust-installer
-  patch_src rust/src/liblibc libc
+  apply_patches
   linux_configure_${COMP}
   # patch again because rust ./configure resets submodules
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/compiler-rt compiler-rt
-  patch_src rust/src/rt/hoedown hoedown
-  patch_src rust/src/jemalloc jemalloc
-  patch_src rust/src/rust-installer rust-installer
-  patch_src rust/src/liblibc libc
+  apply_patches
   linux_build
 }
 
