@@ -172,7 +172,7 @@ netbsd_build_rust_parts(){
   cd ${TOP}/rust/src/compiler-rt
   cmake -D_LLVM_CMAKE_DIR=${LLVM_INSTALL}/share/llvm/cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
   ${MAKE} VERBOSE=1
-  cp ./lib/netbsd/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
+  cp ./lib/netbsd/libclang_rt.builtins-x86_64.a ${TARGET}/libcompiler-rt.a
 
   # build libbacktrace.a
   cd ${TOP}/rust/src
@@ -269,7 +269,7 @@ bitrig_build_rust_parts(){
   cd ${TOP}/rust/src/compiler-rt
   cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
   ${MAKE} VERBOSE=1
-  cp ./lib/bitrig/libclang_rt.x86_64.a ${TARGET}/libcompiler-rt.a
+  cp ./lib/bitrig/libclang_rt.builtins-x86_64.a ${TARGET}/libcompiler-rt.a
 
   # build libbacktrace.a
   cd ${TOP}/rust/src

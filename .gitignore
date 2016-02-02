@@ -4,3 +4,4 @@ stage3*
 .patched
 build*.log
 snap-*
+.*.swp
