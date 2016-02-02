@@ -1,13 +1,25 @@
 #!/usr/bin/env bash
+
+if [[ $# -lt 3 ]]; then
+  echo "Usage: stage3.sh <target> <arch> <compiler>"
+  echo "    target    -- 'bitrig', 'netbsd', etc"
+  echo "    arch      -- 'x86_64', 'i686', 'armv7', etc"
+  echo "    compiler  -- 'gcc' or 'clang'"
+  exit 1
+fi
+
 set -x
 
-OS=`uname -s`
+HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
+TARGET=$1
+ARCH=$2
+COMP=$3
 STAGE=${0#*/}
 STAGE=${STAGE%%.sh}
 
 check(){
-  if [ ${OS} != "Bitrig" ]; then
-    echo "You have to run this on Bitrig!"
+  if [ ${HOST} != ${TARGET} ]; then
+    echo "You have to run this on ${TARGET}!"
     exit 1
   fi
 
@@ -60,27 +72,52 @@ clone(){
 
 patch_src(){
   cd ${TOP}/${1}
-  ID=`git id`
-  PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}.patch
+  ID=`git rev-parse --short HEAD`
+  PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}_${TARGET}_${ARCH}.patch
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}_${TARGET}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${STAGE}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${TARGET}_${ARCH}.patch
+  fi
+  if [ ! -e ${PATCH} ]; then
+    PATCH=${TOP}/../patches/${2}_${ID}_${TARGET}.patch
+  fi
   if [ ! -e ${PATCH} ]; then
     PATCH=${TOP}/../patches/${2}_${ID}.patch
   fi
-  if [ ! -e ${PATCH} ]; then
-    echo "${2} patch needs to be rebased to ${1} tip ${ID}"
-    exit 1
-  fi
-  if [ ! -e .patched ]; then
-    echo "Patching ${TOP}/${1} with ${PATCH}"
-    patch -p1 < ${PATCH}
-    if (( $? )); then
-      echo "Failed to patch ${1}"
-      exit 1
+
+  if [ -e ${PATCH} ]; then
+    if [ ! -e .patched ]; then
+      echo "Patching ${TOP}/${1} with ${PATCH}"
+      patch -p1 < ${PATCH}
+      if (( $? )); then
+        echo "Failed to patch ${1}"
+        exit 1
+      fi
+      date > .patched
+    else
+      echo "${1} already patched on:" `cat .patched`
     fi
-    date > .patched
   else
-    echo "${1} already patched on:" `cat .patched`
+    echo "no patches for ${1}"
   fi
 }
+
+apply_patches(){
+  patch_src rust rust
+  patch_src rust/src/llvm llvm
+  patch src rust/src/compiler-rt compiler-rt
+  patch_src rust/src/rt/hoedown hoedown
+  patch_src rust/src/jemalloc jemalloc
+  patch_src rust/src/rust-installer rust-installer
+  patch_src rust/src/liblibc liblibc
+}
+
+### BITRIG FUNCTIONS ###
 
 bitrig_configure(){
   PREFIX="/usr/local"
@@ -106,21 +143,73 @@ bitrig_build(){
 }
 
 bitrig(){
-  check
   setup
   clone
-  # patch before configure so we can configure for bitrig
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/jemalloc jemalloc
+  apply_patches # patch before configure just in case
   bitrig_configure
+  apply_patches # patch after too, configure clobbers submodules
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-bitrig/rt/llvmdeps.rs
   bitrig_build
 }
 
-MAKE=gmake
-bitrig
+### NETBSD FUNCTIONS ###
+
+netbsd_configure(){
+  export CC="/usr/pkg/gcc49/bin/cc"
+  export CXX="/usr/pkg/gcc49/bin/c++"
+  export AR="/usr/pkg/gcc49/bin/gcc-ar"
+  export NM="/usr/pkg/gcc49/bin/gcc-nm"
+  export RANLIB="/usr/pkg/gcc49/bin/gcc-ranlib"
+  PREFIX="/usr/pkg"
+
+  # configure rust
+  cd ${TOP}/rust
+  #./configure --disable-optimize --disable-docs --enable-local-rust --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  ./configure --disable-docs --enable-local-rust --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  if (( $? )); then
+    echo "Failed to configure rust"
+    exit 1
+  fi
+}
+
+netbsd_build(){
+  cd ${TOP}/rust
+  export RUST_BACKTRACE=1
+  ${MAKE} VERBOSE=1
+  if (( $? )); then
+    echo "Failed to build rust"
+    exit 1
+  fi
+}
+
+netbsd(){
+  setup
+  clone
+  apply_patches # patch before configure just in case
+  netbsd_configure
+  apply_patches # patch after too, configure clobbers submodules
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-netbsd/rt/llvmdeps.rs
+  netbsd_build
+}
+
+check
+MAKE=make
+case ${HOST} in
+  "bitrig")
+    MAKE=gmake
+    bitrig
+  ;;
+  "netbsd")
+    MAKE=gmake
+    netbsd
+  ;;
+  *)
+    echo "${OS} unsupported at the moment"
+    exit 1
+  ;;
+esac
 
 echo "To install to ${PREFIX}: cd ${TOP}/rust && ${MAKE} install"
 

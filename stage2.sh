@@ -109,6 +109,16 @@ patch_src(){
   fi
 }
 
+apply_patches(){
+  patch_src rust rust
+  patch_src rust/src/llvm llvm
+  patch src rust/src/compiler-rt compiler-rt
+  patch_src rust/src/rt/hoedown hoedown
+  patch_src rust/src/jemalloc jemalloc
+  patch_src rust/src/rust-installer rust-installer
+  patch_src rust/src/liblibc liblibc
+}
+
 ### LINUX FUNCTIONS ###
 
 linux_configure_clang(){
@@ -184,13 +194,7 @@ linux_build(){
 linux(){
   setup
   clone
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch src rust/src/compiler-rt compiler-rt
-  patch_src rust/src/rt/hoedown hoedown
-  patch_src rust/src/jemalloc jemalloc
-  patch_src rust/src/rust-installer rust-installer
-  patch_src rust/src/liblibc liblibc
+  apply_patches
   linux_configure_${COMP}
   linux_build
 }

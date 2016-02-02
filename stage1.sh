@@ -78,6 +78,16 @@ patch_src(){
   fi
 }
 
+apply_patches(){
+  patch_src rust rust
+  patch_src rust/src/llvm llvm
+  patch_src rust/src/compiler-rt compiler-rt
+  patch_src rust/src/rt/hoedown hoedown
+  patch_src rust/src/jemalloc jemalloc
+  patch_src rust/src/rust-installer rust-installer
+  patch_src rust/src/liblibc libc
+}
+
 ### LINUX FUNCTIONS ###
 
 linux_configure_clang(){
@@ -95,15 +105,14 @@ linux_configure_clang(){
 linux_configure_gcc() {
   export CC="/usr/bin/gcc"
   export CXX="/usr/bin/g++"
-  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fPIC"
-  export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O2 -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual"
+  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O0 -gstabs+ -fomit-frame-pointer -fPIC"
+  export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O0 -gstabs+ -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual"
   export LDFLAGS="-lc -lpthread -lffi -ltinfo -ldl -lm"
 
   # configure rust
   cd ${TOP}/rust
   ./configure --disable-docs --prefix=${TOP}/install
 }
-
 
 linux_build(){
   cd ${TOP}/rust
@@ -145,8 +154,8 @@ netbsd_build_llvm(){
   cd ${TOP}/rust/src
   mkdir -p llvm-build
   cd llvm-build
-  #../llvm/configure --prefix=${LLVM_INSTALL} --enable-debug-runtime --enable-debug-symbols
-  ../llvm/configure --prefix=${LLVM_INSTALL}
+  ../llvm/configure --prefix=${LLVM_INSTALL} --enable-debug-runtime --enable-debug-symbols
+  #../llvm/configure --prefix=${LLVM_INSTALL}
   if (( $? )); then
     echo "Failed to configure LLVM"
     exit $?
@@ -161,10 +170,10 @@ netbsd_build_llvm(){
 netbsd_build_rust_parts(){
   # build the rustllvm pieces
   cd ${TOP}/rust/src/rustllvm
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ExecutionEngineWrapper.cpp
-  ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ArchiveWrapper.cpp
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ExecutionEngineWrapper.cpp
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ArchiveWrapper.cpp
   ar rcs librustllvm.a ArchiveWrapper.o ExecutionEngineWrapper.o PassWrapper.o RustWrapper.o
   cp librustllvm.a ${TARGET}
 
@@ -185,11 +194,11 @@ netbsd_build_rust_parts(){
   rm -rf include
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
+  ${CC} ${CFLAGS} -c -fPIC -o rust_builtin.o rust_builtin.c
   ar rcs ${TARGET}/librust_builtin.a rust_builtin.o
 
   cd ${TOP}/rust/src/rt
-  ${CC} -c -fPIC -o miniz.o miniz.c
+  ${CC} ${CFLAGS} -c -fPIC -o miniz.o miniz.c
   ar rcs ${TARGET}/libminiz.a miniz.o
 
   cd ${TOP}/rust/src/rt/hoedown
@@ -201,6 +210,8 @@ netbsd_build(){
   export PATH=/usr/pkg/gcc49/bin:$PATH
   export CC="/usr/pkg/gcc49/bin/gcc"
   export CXX="/usr/pkg/gcc49/bin/g++"
+  export CFLAGS="-O0 -gstabs+"
+  export CXXFLAGS="-O0 -gstabs+"
 
   LLVM_INSTALL=${TOP}/install
   TARGET=${TOP}/libs
@@ -225,13 +236,7 @@ netbsd_build(){
 netbsd(){
   setup
   clone
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/compiler-rt compiler-rt
-  patch_src rust/src/rt/hoedown hoedown
-  patch_src rust/src/jemalloc jemalloc
-  patch_src rust/src/rust-installer rust-installer
-  patch_src rust/src/liblibc libc
+  apply_patches
   netbsd_build
 }
 
@@ -337,13 +342,7 @@ bitrig_build(){
 bitrig(){
   setup
   clone
-  patch_src rust rust
-  patch_src rust/src/llvm llvm
-  patch_src rust/src/compiler-rt compiler-rt
-  patch_src rust/src/rt/hoedown hoedown
-  patch_src rust/src/jemalloc jemalloc
-  patch_src rust/src/rust-installer rust-installer
-  patch_src rust/src/liblibc libc
+  apply_patches
   bitrig_build
 }
 
