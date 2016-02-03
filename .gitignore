@@ -5,3 +5,4 @@ stage3*
 build*.log
 snap-*
 .*.swp
+*.tar.bz2
