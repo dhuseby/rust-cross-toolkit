@@ -142,7 +142,7 @@ netbsd_build_llvm(){
   cd ${TOP}/rust/src
   mkdir -p llvm-build
   cd llvm-build
-  ../llvm/configure --prefix=${LLVM_INSTALL} --enable-debug-runtime --enable-debug-symbols
+  ../llvm/configure --prefix=${LLVM_INSTALL} --enable-debug-symbols
   #../llvm/configure --prefix=${LLVM_INSTALL}
   if (( $? )); then
     echo "Failed to configure LLVM"
@@ -198,8 +198,8 @@ netbsd_build(){
   export PATH=/usr/pkg/gcc49/bin:$PATH
   export CC="/usr/pkg/gcc49/bin/gcc"
   export CXX="/usr/pkg/gcc49/bin/g++"
-  export CFLAGS="-O0 -gstabs+"
-  export CXXFLAGS="-O0 -gstabs+"
+  export CFLAGS="-gstabs+"
+  export CXXFLAGS="-gstabs+"
 
   LLVM_INSTALL=${TOP}/install
   TARGET=${TOP}/libs

@@ -6,3 +6,4 @@ build*.log
 snap-*
 .*.swp
 *.tar.bz2
+*.core
