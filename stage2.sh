@@ -132,8 +132,8 @@ linux_configure_clang(){
 linux_configure_gcc(){
   export CC="/usr/bin/gcc"
   export CXX="/usr/bin/g++"
-  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -fomit-frame-pointer -fPIC -O2"
-  export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual -v -O2"
+  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -fomit-frame-pointer -fPIC -O0 -gstabs+"
+  export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual -v -O0 -gstabs+"
   export LDFLAGS="-lc -lpthread -lffi -ltinfo -ldl -lm"
 }
 
@@ -149,7 +149,8 @@ linux_build(){
   export CFG_LLVM_LINKAGE_FILE="${TOP}/rust/src/librustc_llvm/llvmdeps.rs"
   #export RUST_FLAGS="-g -Z verbose"
   #export RUST_FLAGS="--cfg stage0  -O --cfg rtopt -C debug-assertions=on -g -C rpath -C prefer-dynamic -C no-stack-check -Z verbose"
-  export RUST_FLAGS="-O --cfg rtopt -g -C rpath -C prefer-dynamic -C no-stack-check -Z verbose"
+  #export RUST_FLAGS="-O --cfg rtopt -g -C rpath -C prefer-dynamic -C no-stack-check -Z verbose"
+  export RUST_FLAGS="-g -C rpath -C prefer-dynamic -C no-stack-check -Z verbose"
   RUST_LIBS="core libc rustc_unicode alloc collections rand std alloc_system arena log fmt_macros serialize term syntax syntax_ext flate getopts test coretest graphviz rustc_llvm rustc_front rustc_back rbml rustc_data_structures rustc rustc_bitflags rustc_lint rustc_privacy rustc_resolve rustc_mir rustc_platform_intrinsics rustc_trans rustc_typeck rustc_borrowck rustc_metadata rustc_plugin rustc_driver rustdoc"
 
   # compile rust libraries
