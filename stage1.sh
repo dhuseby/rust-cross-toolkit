@@ -85,7 +85,7 @@ apply_patches(){
   patch_src rust/src/rt/hoedown hoedown
   patch_src rust/src/jemalloc jemalloc
   patch_src rust/src/rust-installer rust-installer
-  patch_src rust/src/liblibc libc
+  patch_src rust/src/liblibc liblibc
 }
 
 ### LINUX FUNCTIONS ###
