@@ -1,14 +1,15 @@
 diff --git a/src/unix/bsd/openbsdlike/bitrig.rs b/src/unix/bsd/openbsdlike/bitrig.rs
-index 7c9ba82..e6e7b6a 100644
+index 7c9ba82..dcd50a8 100644
 --- a/src/unix/bsd/openbsdlike/bitrig.rs
 +++ b/src/unix/bsd/openbsdlike/bitrig.rs
-@@ -1,3 +1,5 @@
+@@ -1,3 +1,6 @@
 +pub type pthread_attr_t = *mut ::c_void;
++pub type sigset_t = ::c_uint;
 +
  s! {
      pub struct glob_t {
          pub gl_pathc:  ::c_int,
-@@ -17,4 +19,4 @@ s! {
+@@ -17,4 +20,4 @@ s! {
  
  extern {
      pub fn pthread_set_name_np(tid: ::pthread_t, name: *const ::c_char);
@@ -16,18 +17,18 @@ index 7c9ba82..e6e7b6a 100644
 \ No newline at end of file
 +}
 diff --git a/src/unix/bsd/openbsdlike/mod.rs b/src/unix/bsd/openbsdlike/mod.rs
-index e61814b..80540b4 100644
+index e61814b..08a266b 100644
 --- a/src/unix/bsd/openbsdlike/mod.rs
 +++ b/src/unix/bsd/openbsdlike/mod.rs
-@@ -9,7 +9,6 @@ pub type nlink_t = ::uint32_t;
+@@ -9,16 +9,12 @@ pub type nlink_t = ::uint32_t;
  pub type blksize_t = ::uint32_t;
  pub type ino_t = ::uint64_t;
  pub type fflags_t = u32;
 -pub type pthread_attr_t = *mut ::c_void;
- pub type sigset_t = ::c_uint;
+-pub type sigset_t = ::c_uint;
  pub type pthread_key_t = ::c_int;
  pub type pthread_mutex_t = *mut ::c_void;
-@@ -17,8 +16,6 @@ pub type pthread_mutexattr_t = *mut ::c_void;
+ pub type pthread_mutexattr_t = *mut ::c_void;
  pub type pthread_cond_t = *mut ::c_void;
  pub type pthread_rwlock_t = *mut ::c_void;
  pub type rlim_t = u64;
@@ -37,11 +38,16 @@ index e61814b..80540b4 100644
  
  s! {
 diff --git a/src/unix/bsd/openbsdlike/netbsd.rs b/src/unix/bsd/openbsdlike/netbsd.rs
-index 17d809d..7b7183a 100644
+index 17d809d..dc18eae 100644
 --- a/src/unix/bsd/openbsdlike/netbsd.rs
 +++ b/src/unix/bsd/openbsdlike/netbsd.rs
-@@ -1,4 +1,10 @@
+@@ -1,4 +1,15 @@
  s! {
++
++    pub struct sigset_t {
++        __bits: [::u32; 4],
++    }
++
 +    pub struct pthread_attr_t {
 +        pub pta_magic:  ::c_uint,
 +        pub pta_flags:  ::c_int,
@@ -51,7 +57,7 @@ index 17d809d..7b7183a 100644
      pub struct glob_t {
          pub gl_pathc:   ::c_int,
          __unused1:      ::c_int,
-@@ -19,4 +25,11 @@ s! {
+@@ -19,4 +30,11 @@ s! {
  
  extern {
      pub fn pthread_setname_np(tid: ::pthread_t, format: *const ::c_char, name: *const ::c_void);
@@ -66,16 +72,17 @@ index 17d809d..7b7183a 100644
 +                                 stacksize: *mut ::size_t) -> ::c_int;
 +}
 diff --git a/src/unix/bsd/openbsdlike/openbsd.rs b/src/unix/bsd/openbsdlike/openbsd.rs
-index 6b0577e..687bed5 100644
+index 6b0577e..d904a69 100644
 --- a/src/unix/bsd/openbsdlike/openbsd.rs
 +++ b/src/unix/bsd/openbsdlike/openbsd.rs
-@@ -1,3 +1,5 @@
+@@ -1,3 +1,6 @@
 +pub type pthread_attr_t = *mut ::c_void;
++pub type sigset_t = ::c_uint;
 +
  s! {
      pub struct glob_t {
          pub gl_pathc:   ::c_int,
-@@ -19,4 +21,4 @@ s! {
+@@ -19,4 +22,4 @@ s! {
  
  extern {
      pub fn pthread_set_name_np(tid: ::pthread_t, name: *const ::c_char);
