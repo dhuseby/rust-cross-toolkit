@@ -25,6 +25,7 @@ wait_for_file(){
 }
 
 setup(){
+  rm -rf build*.log
   rm -rf stage1 stage2 stage3 stage4 stage1.tgz stage2.tgz stage3.tgz
   TOP=`pwd`
 }
