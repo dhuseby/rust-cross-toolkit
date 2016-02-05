@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [[ $# -lt 3 ]]; then
-  echo "Usage: stage3.sh <target> <arch> <compiler>"
+  echo "Usage: stage4.sh <target> <arch> <compiler>"
   echo "    target    -- 'bitrig', 'netbsd', etc"
   echo "    arch      -- 'x86_64', 'i686', 'armv7', etc"
   echo "    compiler  -- 'gcc' or 'clang'"
