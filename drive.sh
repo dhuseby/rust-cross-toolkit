@@ -24,6 +24,13 @@ wait_for_file(){
   echo "${1} received from ${OTHERMACHINE}..."
 }
 
+copy_file() {
+  # copy the file to the other machine named .<filename>
+  scp ${1} ${OTHERMACHINE}:${2}/.${1}
+  # then use the atomic mv operation to rename it into place
+  ssh ${OTHERMACHINE} mv ${2}/.${1} ${2}/${1}
+}
+
 setup(){
   #rm -rf build*.log
   #rm -rf stage1 stage2 stage3 stage4 stage1.tgz stage2.tgz stage3.tgz
@@ -37,11 +44,11 @@ do_host() {
   # build host stage 1
   if [ ! -e .stage1 ]; then
     ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
-    cd ${TOP}
     if (( $? )); then
       echo "stage1 ${HOST} failed"
       exit 1
     else
+      cd ${TOP}
       date > .stage1
     fi
   else
@@ -58,18 +65,18 @@ do_host() {
   # build host stage 2
   if [ ! -e .stage2 ]; then
     ./stage2.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build2.log
-    cd ${TOP}
     if (( $? )); then
       echo "stage2 ${HOST} failed"
       exit 1
     else
+      cd ${TOP}
       date > .stage2
     fi
   else
     echo "Stage 2 already built on:" `cat .stage2`
   fi
 
-  scp stage2.tgz ${OTHERMACHINE}:/opt/rust-cross-tookit/
+  copy_file stage2.tgz /opt/rust-cross-toolkit
 }
 
 do_target(){
@@ -78,18 +85,18 @@ do_target(){
 
   if [ ! -e .stage1 ]; then
     ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
-    cd ${TOP}
     if (( $? )); then
       echo "stage1 ${HOST} failed"
       exit 1
     else
+      cd ${TOP}
       date > .stage1
     fi
   else
     echo "Stage 1 already built on:" `cat .stage1`
   fi
 
-  scp stage1.tgz ${OTHERMACHINE}:/opt/rust-cross-toolkit/
+  copy_file stage1.tgz /opt/rust-cross-toolkit/
 
   if [ ! -e stage2.tgz ]; then
     wait_for_file stage2.tgz
@@ -99,11 +106,11 @@ do_target(){
 
   if [ ! -e .stage3 ]; then
     ./stage3.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build3.log
-    cd ${TOP}
     if (( $? )); then
       echo "stage3 ${HOST} failed"
       exit 1
     else
+      cd ${TOP}
       date > .stage3
     fi
   else
@@ -112,11 +119,11 @@ do_target(){
 
   if [ ! -e .stage4 ]; then
     ./stage4.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build4.log
-    cd ${TOP}
     if (( $? )); then
       echo "stage4 ${HOST} failed"
       exit 1
     else
+      cd ${TOP}
       date > .stage4
     fi
   else
