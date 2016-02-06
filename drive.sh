@@ -25,53 +25,102 @@ wait_for_file(){
 }
 
 setup(){
-  rm -rf build*.log
-  rm -rf stage1 stage2 stage3 stage4 stage1.tgz stage2.tgz stage3.tgz
+  #rm -rf build*.log
+  #rm -rf stage1 stage2 stage3 stage4 stage1.tgz stage2.tgz stage3.tgz
   TOP=`pwd`
 }
 
 do_host() {
   echo "Driving the host side..."
   cd ${TOP}
-  ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
-  if (( $? )); then
-    echo "stage1 ${HOST} failed"
-    exit 1
+
+  # build host stage 1
+  if [ ! -e .stage1 ]; then
+    ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
+    cd ${TOP}
+    if (( $? )); then
+      echo "stage1 ${HOST} failed"
+      exit 1
+    else
+      date > .stage1
+    fi
+  else
+    echo "Stage 1 already built on:" `cat .stage1`
   fi
-  cd ${TOP}
-  wait_for_file stage1.tgz
+
+  # wait for target stage 1
+  if [ ! -e stage1.tgz ]; then
+    wait_for_file stage1.tgz
+  fi
+
   tar -zxvf stage1.tgz
-  ./stage2.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build2.log
-  if (( $? )); then
-    echo "stage2 ${HOST} failed"
-    exit 1
+
+  # build host stage 2
+  if [ ! -e .stage2 ]; then
+    ./stage2.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build2.log
+    cd ${TOP}
+    if (( $? )); then
+      echo "stage2 ${HOST} failed"
+      exit 1
+    else
+      date > .stage2
+    fi
+  else
+    echo "Stage 2 already built on:" `cat .stage2`
   fi
-  cd ${TOP}
+
   scp stage2.tgz ${OTHERMACHINE}:/opt/rust-cross-tookit/
 }
 
 do_target(){
   echo "Driving the target side..."
   cd ${TOP}
-  ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
-  if (( $? )); then
-    echo "stage1 ${HOST} failed"
-    exit 1
+
+  if [ ! -e .stage1 ]; then
+    ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
+    cd ${TOP}
+    if (( $? )); then
+      echo "stage1 ${HOST} failed"
+      exit 1
+    else
+      date > .stage1
+    fi
+  else
+    echo "Stage 1 already built on:" `cat .stage1`
   fi
-  cd ${TOP}
-  scp stage1.tgz ${OTHERMACHINE}:/opt/rust-cross-bitrig/
-  wait_for_file stage2.tgz
+
+  scp stage1.tgz ${OTHERMACHINE}:/opt/rust-cross-toolkit/
+
+  if [ ! -e stage2.tgz ]; then
+    wait_for_file stage2.tgz
+  fi
+
   tar -zxvf stage2.tgz
-  ./stage3.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build3.log
-  if (( $? )); then
-    echo "stage3 ${HOST} failed"
-    exit 1
+
+  if [ ! -e .stage3 ]; then
+    ./stage3.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build3.log
+    cd ${TOP}
+    if (( $? )); then
+      echo "stage3 ${HOST} failed"
+      exit 1
+    else
+      date > .stage3
+    fi
+  else
+    echo "Stage 3 already built on:" `cat .stage3`
   fi
-  cd ${TOP}
-  ./stage4.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build4.log
-  if (( $? )); then
-    echo "stage4 ${HOST} failed"
-    exit 1
+
+  if [ ! -e .stage4 ]; then
+    ./stage4.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build4.log
+    cd ${TOP}
+    if (( $? )); then
+      echo "stage4 ${HOST} failed"
+      exit 1
+    else
+      date > .stage4
+    fi
+  else
+    echo "Stage 4 already built on:" `cat .stage4`
   fi
 }
 
