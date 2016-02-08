@@ -27,7 +27,8 @@ clone(){
   if [ ! -e rust ]; then
     cd ${TOP}
     git cclone https://github.com/rust-lang/rust.git tmp-rust
-    REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
+    #REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
+    REV="efdde2479b3099b35b38a7445b5f09559e3f1fd0"
     rm -rf tmp-rust
     git scclone https://github.com/rust-lang/rust.git rust ${REV}
     cd rust
