@@ -91,8 +91,8 @@ send_file() {
 
 build_stage(){
   SCRIPT="stage${1}.sh"
-  LOG="build{$1}.log"
-  LOCK=".stage{$1}"
+  LOG="build${1}.log"
+  LOCK=".stage${1}"
   if [[ -z $REV ]]; then
     REVOPT=
   else
