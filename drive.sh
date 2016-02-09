@@ -25,6 +25,7 @@ TARGET=
 ARCH=
 COMP=
 OTHERMACHINE=
+VERBOSE=
 
 while getopts "hcr:t:a:p:o:v" OPTION; do
   case $OPTION in
@@ -51,6 +52,7 @@ while getopts "hcr:t:a:p:o:v" OPTION; do
       OTHERMACHINE=$OPTARG
       ;;
     v)
+      VERBOSE="yes"
       set -x
       ;;
     ?)
@@ -98,8 +100,13 @@ build_stage(){
   else
     REVOPT="-r ${REV}"
   fi
+  if [[ -z $VERBOSE ]]; then
+    VOPT=
+  else
+    VOPT="-v"
+  fi
   if [ ! -e ${LOCK} ]; then
-    ./${SCRIPT} -t ${TARGET} -a ${ARCH} -p ${COMP} ${REVOPT} 2>&1 | tee ${LOG}
+    ./${SCRIPT} -t ${TARGET} -a ${ARCH} -p ${COMP} ${REVOPT} ${VOPT} 2>&1 | tee ${LOG}
     if (( $? )); then
       echo "${SCRIPT} ${HOST} failed"
       exit 1
