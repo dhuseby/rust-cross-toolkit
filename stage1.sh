@@ -1,20 +1,61 @@
 #!/usr/bin/env bash
 
-if [[ $# -lt 3 ]]; then
-  echo "Usage: stage1.sh <target> <arch> <compiler>"
-  echo "    target    -- 'bitrig', 'netbsd', etc"
-  echo "    arch      -- 'x86_64', 'i686', 'armv7', etc"
-  echo "    compiler  -- 'gcc' or 'clang'"
-  exit 1
-fi
+usage(){
+  cat<<EOF
+  usage: $0 options
 
-set -x
+  This script drives the whole bootstrapping process.
+
+  OPTIONS:
+    -h      Show this message.
+    -r      Revision to build. Default is to build most recent snapshot revision.
+    -t      Target OS. Required. Valid options: 'bitrig' or 'netbsd'.
+    -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
+    -p      Compiler. Required. Valid options: 'gcc' or 'clang'.
+    -v      Verbose output from this script.
+EOF
+}
+
 HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
-TARGET=$1
-ARCH=$2
-COMP=$3
+REV=
+TARGET=
+ARCH=
+COMP=
 STAGE=${0#*/}
 STAGE=${STAGE%%.sh}
+
+while getopts "hr:t:a:p:v" OPTION; do
+  case $OPTION in
+    h)
+      usage
+      exit 1
+      ;;
+    r)
+      REV=$OPTARG
+      ;;
+    t)
+      TARGET=$OPTARG
+      ;;
+    a)
+      ARCH=$OPTARG
+      ;;
+    p)
+      COMP=$OPTARG
+      ;;
+    v)
+      set -x
+      ;;
+    ?)
+      usage
+      exit
+      ;;
+  esac
+done
+
+if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]]; then
+  usage
+  exit 1
+fi
 
 setup(){
   echo "Creating stage1"
@@ -26,10 +67,11 @@ setup(){
 clone(){
   if [ ! -e rust ]; then
     cd ${TOP}
-    #git cclone https://github.com/rust-lang/rust.git tmp-rust
-    #REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
-    REV="efdde2479b3099b35b38a7445b5f09559e3f1fd0"
-    #rm -rf tmp-rust
+    if [[ -z ${REV} ]]; then
+      git cclone https://github.com/rust-lang/rust.git tmp-rust
+      REV=`head -n 1 tmp-rust/src/snapshots.txt | grep -oEi "[0-9a-fA-F]+$"`
+      rm -rf tmp-rust
+    fi
     git scclone https://github.com/rust-lang/rust.git rust ${REV}
     cd rust
     git rev-parse --short HEAD > ${TOP}/revision.id

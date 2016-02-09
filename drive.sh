@@ -1,41 +1,115 @@
 #!/usr/bin/env bash
-set -x
 
-if [[ $# -lt 4 ]]; then
-  echo "Usage: drive.sh <target_os> <arch> <compiler> <other_host>"
-  echo "    target_os -- 'bitrig', 'netbsd', etc"
-  echo "    arch      -- 'x86_64', 'i686', 'armv7', etc"
-  echo "    compiler  -- 'gcc' or 'clang'"
-  echo "    other_host -- the fqdn of the other host to work with"
+usage(){
+  cat<<EOF
+  usage: $0 options
+
+  This script drives the whole bootstrapping process.
+
+  OPTIONS:
+    -h      Show this message.
+    -c      Continue previous build. Default is to rebuild all.
+    -r      Revision to build. Default is to build most recent snapshot revision.
+    -t      Target OS. Required. Valid options: 'bitrig' or 'netbsd'.
+    -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
+    -p      Compiler. Required. Valid options: 'gcc' or 'clang'.
+    -o      Other host. Required.  The other machine doing the bootstrapping.
+    -v      Verbose output from this script.
+EOF
+}
+
+HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
+CONTINUE=
+REV=
+TARGET=
+ARCH=
+COMP=
+OTHERMACHINE=
+
+while getopts "hcr:t:a:p:o:v" OPTION; do
+  case $OPTION in
+    h)
+      usage
+      exit 1
+      ;;
+    c)
+      CONTINUE="yes"
+      ;;
+    r)
+      REV=$OPTARG
+      ;;
+    t)
+      TARGET=$OPTARG
+      ;;
+    a)
+      ARCH=$OPTARG
+      ;;
+    p)
+      COMP=$OPTARG
+      ;;
+    o)
+      OTHERMACHINE=$OPTARG
+      ;;
+    v)
+      set -x
+      ;;
+    ?)
+      usage
+      exit
+      ;;
+  esac
+done
+
+if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]] || [[ -z $OTHERMACHINE ]]; then
+  usage
   exit 1
 fi
 
-set -x
-HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
-TARGET=$1
-ARCH=$2
-COMP=$3
-OTHERMACHINE=$4
+setup(){
+  if [[ -z $CONTINUE ]]; then
+    rm -rf build*.log
+    rm -rf stage1 stage2 stage3 stage4 stage1.tgz stage2.tgz stage3.tgz
+    rm -rf .stage1 .stage2 .stage3 .stage4
+  fi
+  TOP=`pwd`
+}
 
 wait_for_file(){
   while [ ! -e ${1} ]; do
     sleep 60
   done
   echo "${1} received from ${OTHERMACHINE}..."
+  tar -zxvf ${1}
 }
 
-copy_file() {
+send_file() {
   # copy the file to the other machine named .<filename>
   scp ${1} ${OTHERMACHINE}:${2}/.${1}
   # then use the atomic mv operation to rename it into place
   ssh ${OTHERMACHINE} mv ${2}/.${1} ${2}/${1}
 }
 
-setup(){
-  rm -rf build*.log
-  rm -rf stage1 stage2 stage3 stage4 stage1.tgz stage2.tgz stage3.tgz
-  rm -rf .stage1 .stage2 .stage3 .stage4
-  TOP=`pwd`
+build_stage(){
+  SCRIPT="stage${1}.sh"
+  LOG="build{$1}.log"
+  LOCK=".stage{$1}"
+  if [[ -z $REV ]]; then
+    REVOPT=
+  else
+    REVOPT="-r ${REV}"
+  fi
+  if [ ! -e ${LOCK} ]; then
+    ./${SCRIPT} -t ${TARGET} -a ${ARCH} -p ${COMP} ${REVOPT} 2>&1 | tee ${LOG}
+    if (( $? )); then
+      echo "${SCRIPT} ${HOST} failed"
+      exit 1
+    else
+      cd ${TOP}
+      date > ${LOCK}
+    fi
+  else
+    echo "Stage ${1} already built on:" `cat ${LOCK}`
+  fi
 }
 
 do_host() {
@@ -43,93 +117,36 @@ do_host() {
   cd ${TOP}
 
   # build host stage 1
-  if [ ! -e .stage1 ]; then
-    ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
-    if (( $? )); then
-      echo "stage1 ${HOST} failed"
-      exit 1
-    else
-      cd ${TOP}
-      date > .stage1
-    fi
-  else
-    echo "Stage 1 already built on:" `cat .stage1`
-  fi
+  build_stage 1
 
-  # wait for target stage 1
-  if [ ! -e stage1.tgz ]; then
-    wait_for_file stage1.tgz
-  fi
-
-  tar -zxvf stage1.tgz
+  # wait for stage 1 from target machine
+  wait_for_file stage1.tgz
 
   # build host stage 2
-  if [ ! -e .stage2 ]; then
-    ./stage2.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build2.log
-    if (( $? )); then
-      echo "stage2 ${HOST} failed"
-      exit 1
-    else
-      cd ${TOP}
-      date > .stage2
-    fi
-  else
-    echo "Stage 2 already built on:" `cat .stage2`
-  fi
+  build_stage 2
 
-  copy_file stage2.tgz /opt/rust-cross-toolkit
+  # send stage 2 to target machine
+  send_file stage2.tgz /opt/rust-cross-toolkit
 }
 
 do_target(){
   echo "Driving the target side..."
   cd ${TOP}
 
-  if [ ! -e .stage1 ]; then
-    ./stage1.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build1.log
-    if (( $? )); then
-      echo "stage1 ${HOST} failed"
-      exit 1
-    else
-      cd ${TOP}
-      date > .stage1
-    fi
-  else
-    echo "Stage 1 already built on:" `cat .stage1`
-  fi
+  # build target stage 1
+  build_stage 1
 
-  copy_file stage1.tgz /opt/rust-cross-toolkit/
+  # send target stage 1 to host
+  send_file stage1.tgz /opt/rust-cross-toolkit/
 
-  if [ ! -e stage2.tgz ]; then
-    wait_for_file stage2.tgz
-  fi
+  # wait for host stage 2
+  wait_for_file stage2.tgz
 
-  tar -zxvf stage2.tgz
+  # build target stage 3
+  build_stage 3
 
-  if [ ! -e .stage3 ]; then
-    ./stage3.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build3.log
-    if (( $? )); then
-      echo "stage3 ${HOST} failed"
-      exit 1
-    else
-      cd ${TOP}
-      date > .stage3
-    fi
-  else
-    echo "Stage 3 already built on:" `cat .stage3`
-  fi
-
-  if [ ! -e .stage4 ]; then
-    ./stage4.sh ${TARGET} ${ARCH} ${COMP} 2>&1 | tee build4.log
-    if (( $? )); then
-      echo "stage4 ${HOST} failed"
-      exit 1
-    else
-      cd ${TOP}
-      date > .stage4
-    fi
-  else
-    echo "Stage 4 already built on:" `cat .stage4`
-  fi
+  # build target stage 4
+  build_stage 4
 }
 
 setup

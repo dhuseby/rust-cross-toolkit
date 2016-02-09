@@ -1,20 +1,65 @@
 #!/usr/bin/env bash
 
-if [[ $# -lt 3 ]]; then
-  echo "Usage: stage3.sh <target> <arch> <compiler>"
-  echo "    target    -- 'bitrig', 'netbsd', etc"
-  echo "    arch      -- 'x86_64', 'i686', 'armv7', etc"
-  echo "    compiler  -- 'gcc' or 'clang'"
+usage(){
+  cat<<EOF
+  usage: $0 options
+
+  This script drives the whole bootstrapping process.
+
+  OPTIONS:
+    -h      Show this message.
+    -t      Target OS. Required. Valid options: 'bitrig' or 'netbsd'.
+    -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
+    -p      Compiler. Required. Valid options: 'gcc' or 'clang'.
+    -v      Verbose output from this script.
+EOF
+}
+
+HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
+TARGET=
+ARCH=
+COMP=
+STAGE=${0#*/}
+STAGE=${STAGE%%.sh}
+
+while getopts "hr:t:a:p:v" OPTION; do
+  case $OPTION in
+    h)
+      usage
+      exit 1
+      ;;
+    r)
+      ;;
+    t)
+      TARGET=$OPTARG
+      ;;
+    a)
+      ARCH=$OPTARG
+      ;;
+    p)
+      COMP=$OPTARG
+      ;;
+    v)
+      set -x
+      ;;
+    ?)
+      usage
+      exit
+      ;;
+  esac
+done
+
+if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]]; then
+  usage
   exit 1
 fi
 
-set -x
-HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
-TARGET=$1
-ARCH=$2
-COMP=$3
-STAGE=${0#*/}
-STAGE=${STAGE%%.sh}
+check_for(){
+  if [ ! -e ${1} ]; then
+    echo "${1} does not exist!"
+    exit 1
+  fi
+}
 
 check(){
   if [ ${HOST} != ${TARGET} ]; then
@@ -22,15 +67,9 @@ check(){
     exit 1
   fi
 
-  if [ ! -e "stage1/libs" ]; then
-    echo "stage1/libs does not exist!"
-    exit 1
-  fi
-
-  if [ ! -e "stage2/rust-libs" ]; then
-    echo "stage2/rust-libs does not exist!"
-    exit 1
-  fi
+  for f in "stage1/libs" "stage2/rust-libs"; do
+    check_for ${f}
+  done
 }
 
 setup(){
