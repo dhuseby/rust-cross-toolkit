@@ -1,5 +1,5 @@
 diff --git a/src/libstd/sys/unix/stack_overflow.rs b/src/libstd/sys/unix/stack_overflow.rs
-index a868abb..029d25b 100644
+index a868abb..9fc9cc7 100644
 --- a/src/libstd/sys/unix/stack_overflow.rs
 +++ b/src/libstd/sys/unix/stack_overflow.rs
 @@ -60,7 +60,11 @@ mod imp {
@@ -7,7 +7,7 @@ index a868abb..029d25b 100644
      static mut PAGE_SIZE: usize = 0;
  
 -    #[cfg(any(target_os = "linux", target_os = "android"))]
-+    #[cfg(any(target_os = "linux", 
++    #[cfg(any(target_os = "linux",
 +              target_os = "android",
 +              target_os = "bitrig",
 +              target_os = "openbsd",
@@ -46,12 +46,12 @@ index a868abb..029d25b 100644
 +        (*(info as *const siginfo_t)).si_addr as usize
 +    }
 +
-+    #[cfg(not(any(target_os = "linux", 
++    #[cfg(not(any(target_os = "linux",
 +                  target_os = "android",
 +                  target_os = "bitrig",
 +                  target_os = "openbsd",
 +                  target_os = "freebsd",
-+                  target_os = "dragonfly"
++                  target_os = "dragonfly",
 +                  target_os = "netbsd")))]
      unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
          (*info).si_addr as usize
