@@ -240,9 +240,13 @@ illumos_build_rust_parts(){
   cd ..
   rm -rf include
 
+  #cd ${TOP}/rust/src/rt
+  #${CC} ${CFLAGS} -c -fPIC -o rust_builtin.o rust_builtin.c
+  #ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
+
   cd ${TOP}/rust/src/rt
-  ${CC} ${CFLAGS} -c -fPIC -o rust_builtin.o rust_builtin.c
-  ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
+  ${CC} ${CFLAGS} -c -fPIC -o rust_test_helpers.o rust_test_helpers.c
+  ar rcs ${LIB_DIR}/librust_test_helpers.a rust_test_helpers.o
 
   cd ${TOP}/rust/src/rt
   ${CC} ${CFLAGS} -c -fPIC -o miniz.o miniz.c
@@ -336,9 +340,13 @@ netbsd_build_rust_parts(){
   cd ..
   rm -rf include
 
+  #cd ${TOP}/rust/src/rt
+  #${CC} ${CFLAGS} -c -fPIC -o rust_builtin.o rust_builtin.c
+  #ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
+
   cd ${TOP}/rust/src/rt
-  ${CC} ${CFLAGS} -c -fPIC -o rust_builtin.o rust_builtin.c
-  ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
+  ${CC} ${CFLAGS} -c -fPIC -o rust_test_helpers.o rust_test_helpers.c
+  ar rcs ${LIB_DIR}/librust_test_helpers.a rust_test_helpers.o
 
   cd ${TOP}/rust/src/rt
   ${CC} ${CFLAGS} -c -fPIC -o miniz.o miniz.c
@@ -436,9 +444,13 @@ bitrig_build_rust_parts(){
   ${CC} -c -fPIC -o record_sp.o arch/x86_64/record_sp.S
   ar rcs ${LIB_DIR}/librustrt_native.a rust_try.o record_sp.o
 
+  #cd ${TOP}/rust/src/rt
+  #${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
+  #ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
+
   cd ${TOP}/rust/src/rt
-  ${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
-  ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
+  ${CC} ${CFLAGS} -c -fPIC -o rust_test_helpers.o rust_test_helpers.c
+  ar rcs ${LIB_DIR}/librust_test_helpers.a rust_test_helpers.o
 
   cd ${TOP}/rust/src/rt
   ${CC} -c -fPIC -o morestack.o arch/x86_64/morestack.S
