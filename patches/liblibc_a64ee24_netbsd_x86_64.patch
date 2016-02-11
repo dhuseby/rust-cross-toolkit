@@ -224,7 +224,7 @@ index 2f4b5be..ea116fb 100644
  pub const Q_GETQUOTA: ::c_int = 0x300;
  pub const Q_SETQUOTA: ::c_int = 0x400;
 diff --git a/src/unix/bsd/openbsdlike/netbsd.rs b/src/unix/bsd/openbsdlike/netbsd.rs
-index 9ddb253..fd7b916 100644
+index 9ddb253..b350f1d 100644
 --- a/src/unix/bsd/openbsdlike/netbsd.rs
 +++ b/src/unix/bsd/openbsdlike/netbsd.rs
 @@ -116,7 +116,8 @@ s! {
@@ -232,7 +232,7 @@ index 9ddb253..fd7b916 100644
          pub si_errno: ::c_int,
          __pad1: ::c_int,
 -        __pad2: [u64; 14],
-+        si_addr: *mut ::c_void,
++        pub si_addr: *mut ::c_void,
 +        __pad2: [u64; 13],
      }
  
