@@ -85,7 +85,7 @@ check(){
 }
 
 setup(){
-  if [[ -z $CONTINUE ]] || [[ ! -e .stage2 ]]; then
+  if [[ -z $CONTINUE ]]; then
     echo "Rebuilding stage2"
     rm -rf build2.log
     rm -rf stage2
@@ -203,7 +203,7 @@ linux_build(){
   #export RUST_FLAGS="--cfg stage0  -O --cfg rtopt -C debug-assertions=on -g -C rpath -C prefer-dynamic -C no-stack-check -Z verbose"
   #export RUST_FLAGS="-O --cfg rtopt -g -C rpath -C prefer-dynamic -C no-stack-check -Z verbose"
   export RUST_FLAGS="-g -C rpath -C prefer-dynamic -C no-stack-check -Z verbose"
-  RUST_LIBS="core libc rustc_unicode alloc collections rand std alloc_system arena log fmt_macros serialize term syntax syntax_ext flate getopts test coretest graphviz rustc_llvm rustc_front rustc_back rbml rustc_data_structures rustc rustc_bitflags rustc_lint rustc_privacy rustc_resolve rustc_mir rustc_platform_intrinsics rustc_trans rustc_typeck rustc_borrowck rustc_metadata rustc_plugin rustc_driver rustdoc"
+  RUST_LIBS="core libc rustc_unicode alloc collections rand std alloc_system arena log fmt_macros serialize term syntax syntax_ext flate getopts test graphviz rustc_llvm rustc_front rustc_back rbml rustc_data_structures rustc rustc_bitflags rustc_lint rustc_privacy rustc_resolve rustc_mir rustc_platform_intrinsics rustc_trans rustc_typeck rustc_borrowck rustc_metadata rustc_plugin rustc_passes rustc_driver rustdoc"
 
   # compile rust libraries
   for lib in $RUST_LIBS; do
@@ -241,6 +241,7 @@ linux(){
   apply_patches
   linux_configure_${COMP}
   linux_build
+  date > .stage2
 }
 
 check

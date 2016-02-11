@@ -70,7 +70,7 @@ check_error(){
 }
 
 setup(){
-  if [[ -z $CONTINUE ]] || [[ ! -e .stage1 ]]; then
+  if [[ -z $CONTINUE ]]; then
     echo "Rebuilding stage1"
     rm -rf build1.log
     rm -rf stage1
@@ -190,6 +190,7 @@ linux(){
   # patch again because rust ./configure resets submodules
   apply_patches
   linux_build
+  date > .stage1
 }
 
 ### ILLUMOS FUNCTIONS ###
@@ -284,6 +285,7 @@ illumos(){
   clone
   apply_patches
   illumos_build
+  date > .stage1
 }
 
 
@@ -379,6 +381,7 @@ netbsd(){
   clone
   apply_patches
   netbsd_build
+  date > .stage1
 }
 
 ### BITRIG FUNCTIONS ###
@@ -485,6 +488,7 @@ bitrig(){
   clone
   apply_patches
   bitrig_build
+  date > .stage1
 }
 
 MAKE=make

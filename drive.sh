@@ -77,7 +77,7 @@ check_error(){
 
 set_opt_if(){
   if [[ ! -z ${1} ]]; then
-    echo ${2}
+    echo -n ${2}
   fi
 }
 
