@@ -26,6 +26,7 @@ ARCH=
 COMP=
 OTHERMACHINE=
 VERBOSE=
+TOP=`pwd`
 
 while getopts "hcr:t:a:p:o:v" OPTION; do
   case $OPTION in
@@ -74,13 +75,18 @@ check_error(){
   fi
 }
 
+set_opt_if(){
+  if [[ ! -z ${1} ]]; then
+    echo ${2}
+  fi
+}
+
 setup(){
   if [[ -z $CONTINUE ]]; then
     rm -rf build*.log
     rm -rf stage1 stage2 stage3 stage4 stage1.tgz stage2.tgz stage3.tgz
     rm -rf .stage1 .stage2 .stage3 .stage4
   fi
-  TOP=`pwd`
 }
 
 wait_for_file(){
@@ -101,25 +107,14 @@ send_file() {
 build_stage(){
   SCRIPT="stage${1}.sh"
   LOG="build${1}.log"
-  LOCK=".stage${1}"
-  if [[ -z $REV ]]; then
-    REVOPT=
-  else
-    REVOPT="-r ${REV}"
-  fi
-  if [[ -z $VERBOSE ]]; then
-    VOPT=
-  else
-    VOPT="-v"
-  fi
-  if [ ! -e ${LOCK} ]; then
-    ./${SCRIPT} -t ${TARGET} -a ${ARCH} -p ${COMP} ${REVOPT} ${VOPT} 2>&1 | tee ${LOG}
-    check_error $? "${SCRIPT} ${HOST} failed"
-    cd ${TOP}
-    date > ${LOCK}
-  else
-    echo "Stage ${1} already built on:" `cat ${LOCK}`
-  fi
+  ROPT=$(set_opt_if $REV "-r ${REV}")
+  VOPT=$(set_opt_if $VERBOSE "-v")
+  COPT=$(set_opt_if $CONTINUE "-c")
+
+  # execute the stage script
+  ./${SCRIPT} -t ${TARGET} -a ${ARCH} -p ${COMP} ${ROPT} ${VOPT} ${COPT} 2>&1 | tee ${LOG}
+  check_error $? "${SCRIPT} ${HOST} failed"
+  cd ${TOP}
 }
 
 do_host() {

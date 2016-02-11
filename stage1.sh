@@ -8,6 +8,7 @@ usage(){
 
   OPTIONS:
     -h      Show this message.
+    -c      Continue previous build. Default is to rebuild all.
     -r      Revision to build. Default is to build most recent snapshot revision.
     -t      Target OS. Required. Valid options: 'bitrig' or 'netbsd'.
     -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
@@ -17,6 +18,7 @@ EOF
 }
 
 HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
+CONTINUE=
 REV=
 TARGET=
 ARCH=
@@ -24,11 +26,14 @@ COMP=
 STAGE=${0#*/}
 STAGE=${STAGE%%.sh}
 
-while getopts "hr:t:a:p:v" OPTION; do
+while getopts "hcr:t:a:p:v" OPTION; do
   case $OPTION in
     h)
       usage
       exit 1
+      ;;
+    c)
+      CONTINUE="yes"
       ;;
     r)
       REV=$OPTARG
@@ -65,6 +70,15 @@ check_error(){
 }
 
 setup(){
+  if [[ -z $CONTINUE ]]; then
+    echo "Rebuilding stage1"
+    rm -rf build1.log
+    rm -rf stage1
+    rm -rf .stage1
+  elif [[ -e .stage1 ]]; then
+    echo "Stage 1 already built on:" `cat .stage1`
+    exit 1
+  fi
   echo "Creating stage1"
   mkdir -p stage1
   cd stage1
