@@ -196,8 +196,8 @@ linux(){
 
 netbsd_build_llvm(){
   mkdir -p ${LLVM_INSTALL}
-  mkdir -p ${TARGET}
-  mkdir -p ${LLVM_TARGET}
+  mkdir -p ${LIB_DIR}
+  mkdir -p ${LLVM_DIR}
 
   # compile llvm
   cd ${TOP}/rust/src
@@ -210,7 +210,7 @@ netbsd_build_llvm(){
   ${MAKE} VERBOSE=1 install
 
   # copy the llvm lib files to the LLVM TARGET
-  cp `${LLVM_INSTALL}/bin/llvm-config --libfiles` ${LLVM_TARGET}
+  cp `${LLVM_INSTALL}/bin/llvm-config --libfiles` ${LLVM_DIR}
 }
 
 netbsd_build_rust_parts(){
@@ -221,35 +221,35 @@ netbsd_build_rust_parts(){
   ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ExecutionEngineWrapper.cpp
   ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ArchiveWrapper.cpp
   ar rcs librustllvm.a ArchiveWrapper.o ExecutionEngineWrapper.o PassWrapper.o RustWrapper.o
-  cp librustllvm.a ${TARGET}
+  cp librustllvm.a ${LIB_DIR}
 
   # build libcompiler-rt.a
   cd ${TOP}/rust/src/compiler-rt
   cmake -D_LLVM_CMAKE_DIR=${LLVM_INSTALL}/share/llvm/cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
   ${MAKE} VERBOSE=1
-  cp ./lib/netbsd/libclang_rt.builtins-x86_64.a ${TARGET}/libcompiler-rt.a
+  cp ./lib/netbsd/libclang_rt.builtins-x86_64.a ${LIB_DIR}/libcompiler-rt.a
 
   # build libbacktrace.a
   cd ${TOP}/rust/src
   ln -s libbacktrace include
   cd libbacktrace
-  ./configure
+  ./configure --host=${ARCH}-unknown-netbsd
   ${MAKE} VERBOSE=1
-  cp .libs/libbacktrace.a ${TARGET}
+  cp .libs/libbacktrace.a ${LIB_DIR}
   cd ..
   rm -rf include
 
   cd ${TOP}/rust/src/rt
   ${CC} ${CFLAGS} -c -fPIC -o rust_builtin.o rust_builtin.c
-  ar rcs ${TARGET}/librust_builtin.a rust_builtin.o
+  ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
 
   cd ${TOP}/rust/src/rt
   ${CC} ${CFLAGS} -c -fPIC -o miniz.o miniz.c
-  ar rcs ${TARGET}/libminiz.a miniz.o
+  ar rcs ${LIB_DIR}/libminiz.a miniz.o
 
   cd ${TOP}/rust/src/rt/hoedown
   ${MAKE} VERBOSE=1 libhoedown.a
-  cp libhoedown.a ${TARGET}
+  cp libhoedown.a ${LIB_DIR}
 }
 
 netbsd_build(){
@@ -260,15 +260,15 @@ netbsd_build(){
   export CXXFLAGS="-g -O0"
 
   LLVM_INSTALL=${TOP}/install
-  TARGET=${TOP}/libs
-  LLVM_TARGET=${TARGET}/llvm
+  LIB_DIR=${TOP}/libs
+  LLVM_DIR=${LIB_DIR}/llvm
 
   netbsd_build_llvm
   netbsd_build_rust_parts
 
   # Copy NetBSD system libraries
-  mkdir -p ${TARGET}/usr/lib
-  cp -r /usr/lib/* ${TARGET}/usr/lib/
+  mkdir -p ${LIB_DIR}/usr/lib
+  cp -r /usr/lib/* ${LIB_DIR}/usr/lib/
 
   cd ${TOP}/..
   python ${TOP}/rust/src/etc/mklldeps.py stage1/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser mcjit interpreter instrumentation" true "${LLVM_INSTALL}/bin/llvm-config" "stdc++" "0"
@@ -290,8 +290,8 @@ netbsd(){
 
 bitrig_build_llvm(){
   mkdir -p ${LLVM_INSTALL}
-  mkdir -p ${TARGET}
-  mkdir -p ${LLVM_TARGET}
+  mkdir -p ${LIB_DIR}
+  mkdir -p ${LLVM_DIR}
 
   # compile llvm
   cd ${TOP}/rust/src
@@ -303,7 +303,7 @@ bitrig_build_llvm(){
   ${MAKE} VERBOSE=1 install
 
   # copy the llvm lib files to the LLVM TARGET
-  cp `${LLVM_INSTALL}/bin/llvm-config --libfiles` ${LLVM_TARGET}
+  cp `${LLVM_INSTALL}/bin/llvm-config --libfiles` ${LLVM_DIR}
 }
 
 bitrig_build_rust_parts(){
@@ -314,21 +314,21 @@ bitrig_build_rust_parts(){
   ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ExecutionEngineWrapper.cpp
   ${CXX} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ArchiveWrapper.cpp
   ar rcs librustllvm.a ArchiveWrapper.o ExecutionEngineWrapper.o PassWrapper.o RustWrapper.o
-  cp librustllvm.a ${TARGET}
+  cp librustllvm.a ${LIB_DIR}
 
   # build libcompiler-rt.a
   cd ${TOP}/rust/src/compiler-rt
   cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
   ${MAKE} VERBOSE=1
-  cp ./lib/bitrig/libclang_rt.builtins-x86_64.a ${TARGET}/libcompiler-rt.a
+  cp ./lib/bitrig/libclang_rt.builtins-x86_64.a ${LIB_DIR}/libcompiler-rt.a
 
   # build libbacktrace.a
   cd ${TOP}/rust/src
   ln -s libbacktrace include
   cd libbacktrace
-  ./configure
+  ./configure --host=${ARCH}-unknown-bitrig
   ${MAKE} VERBOSE=1
-  cp .libs/libbacktrace.a ${TARGET}
+  cp .libs/libbacktrace.a ${LIB_DIR}
   cd ..
   rm -rf include
 
@@ -336,23 +336,23 @@ bitrig_build_rust_parts(){
   ${LLVM_INSTALL}/bin/llc rust_try.ll
   ${CC} -c -fPIC -o rust_try.o rust_try.s
   ${CC} -c -fPIC -o record_sp.o arch/x86_64/record_sp.S
-  ar rcs ${TARGET}/librustrt_native.a rust_try.o record_sp.o
+  ar rcs ${LIB_DIR}/librustrt_native.a rust_try.o record_sp.o
 
   cd ${TOP}/rust/src/rt
   ${CC} -c -fPIC -o rust_builtin.o rust_builtin.c
-  ar rcs ${TARGET}/librust_builtin.a rust_builtin.o
+  ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
 
   cd ${TOP}/rust/src/rt
   ${CC} -c -fPIC -o morestack.o arch/x86_64/morestack.S
-  ar rcs ${TARGET}/libmorestack.a morestack.o
+  ar rcs ${LIB_DIR}/libmorestack.a morestack.o
 
   cd ${TOP}/rust/src/rt
   ${CC} -c -fPIC -o miniz.o miniz.c
-  ar rcs ${TARGET}/libminiz.a miniz.o
+  ar rcs ${LIB_DIR}/libminiz.a miniz.o
 
   cd ${TOP}/rust/src/rt/hoedown
   ${MAKE} VERBOSE=1 libhoedown.a
-  cp libhoedown.a ${TARGET}
+  cp libhoedown.a ${LIB_DIR}
 }
 
 bitrig_build(){
@@ -366,15 +366,15 @@ bitrig_build(){
   export CXX="/usr/bin/clang++"
 
   LLVM_INSTALL=${TOP}/install
-  TARGET=${TOP}/libs
-  LLVM_TARGET=${TARGET}/llvm
+  LIB_DIR=${TOP}/libs
+  LLVM_DIR=${LIB_DIR}/llvm
 
   bitrig_build_llvm
   bitrig_build_rust_parts
 
   # Copy Bitrig system libraries
-  mkdir -p ${TARGET}/usr/lib
-  cp -r /usr/lib/* ${TARGET}/usr/lib/
+  mkdir -p ${LIB_DIR}/usr/lib
+  cp -r /usr/lib/* ${LIB_DIR}/usr/lib/
 
   cd ${TOP}/..
   python ${TOP}/rust/src/etc/mklldeps.py stage1/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser mcjit interpreter instrumentation" true "${LLVM_INSTALL}/bin/llvm-config"
