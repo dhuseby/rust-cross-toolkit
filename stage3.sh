@@ -227,6 +227,10 @@ case ${HOST} in
     MAKE=gmake
     netbsd
   ;;
+  "illumos")
+    MAKE=gmake
+    illumos
+  ;;
   *)
     echo "${OS} unsupported at the moment"
     exit 1
