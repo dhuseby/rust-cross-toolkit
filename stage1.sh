@@ -148,8 +148,8 @@ linux_configure_clang(){
 linux_configure_gcc() {
   export CC="/usr/bin/gcc"
   export CXX="/usr/bin/g++"
-  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O0 -gstabs+ -fomit-frame-pointer -fPIC"
-  export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O0 -gstabs+ -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual"
+  export CFLAGS="-I/usr/lib/llvm-3.4/include -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O0 -g -fomit-frame-pointer -fPIC"
+  export CXXFLAGS="-mstackrealign -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O0 -g -fomit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual"
   export LDFLAGS="-lc -lpthread -lffi -ltinfo -ldl -lm"
 
   # configure rust
@@ -241,8 +241,8 @@ netbsd_build(){
   export PATH=/usr/pkg/gcc49/bin:$PATH
   export CC="/usr/pkg/gcc49/bin/gcc"
   export CXX="/usr/pkg/gcc49/bin/g++"
-  export CFLAGS="-gstabs+"
-  export CXXFLAGS="-gstabs+"
+  export CFLAGS="-g -O0"
+  export CXXFLAGS="-g -O0"
 
   LLVM_INSTALL=${TOP}/install
   TARGET=${TOP}/libs
