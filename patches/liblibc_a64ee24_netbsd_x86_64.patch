@@ -1,5 +1,29 @@
+diff --git a/.travis.yml b/.travis.yml
+index b522002..d6d3ab5 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -3,6 +3,7 @@ sudo: required
+ dist: trusty
+ rust:
+   - 1.0.0
++  - stable
+   - beta
+   - nightly
+ services:
+@@ -10,8 +11,11 @@ services:
+ script:
+   - if [[ $TRAVIS_RUST_VERSION = nightly* ]]; then
+       sh ci/run-travis.sh;
++    elif [[ $TRAVIS_RUST_VERSION = "1.0.0" ]]; then
++      cargo build;
+     else
+       cargo build;
++      cargo build --no-default-features;
+     fi
+ os:
+   - linux
 diff --git a/Cargo.toml b/Cargo.toml
-index a21ec67..067d078 100644
+index a21ec67..28e5b33 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
 @@ -1,7 +1,7 @@
@@ -11,6 +35,33 @@ index a21ec67..067d078 100644
  authors = ["The Rust Project Developers"]
  license = "MIT/Apache-2.0"
  readme = "README.md"
+@@ -14,4 +14,5 @@ other common platform libraries.
+ """
+ 
+ [features]
+-default = []
++default = ["use_std"]
++use_std = []
+diff --git a/README.md b/README.md
+index 801b73d..69ebada 100644
+--- a/README.md
++++ b/README.md
+@@ -24,6 +24,15 @@ Next, add this to your crate root:
+ extern crate libc;
+ ```
+ 
++Currently libc by default links to the standard library, but if you would
++instead like to use libc in a `#![no_std]` situation or crate you can request
++this via:
++
++```toml
++[dependencies]
++libc = { version = "0.2", default-features = false }
++```
++
+ ## What is libc?
+ 
+ The primary purpose of this crate is to provide all of the definitions necessary
 diff --git a/libc-test/Cargo.lock b/libc-test/Cargo.lock
 index fd2a533..e5564c5 100644
 --- a/libc-test/Cargo.lock
@@ -45,6 +96,21 @@ index 1c71204..9c3b592 100644
          cfg.header("sys/vfs.h");
          cfg.header("sys/syscall.h");
          if !musl {
+diff --git a/src/lib.rs b/src/lib.rs
+index bcb83fc..c9d7701 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -82,7 +82,9 @@
+                                reason = "use `libc` from crates.io",
+                                issue = "27783"))]
+ 
+-#[cfg(all(not(stdbuild), not(dox)))]
++#![cfg_attr(not(feature = "use_std"), no_std)]
++
++#[cfg(all(not(stdbuild), not(dox), feature = "use_std"))]
+ extern crate std as core;
+ 
+ #[macro_use] mod macros;
 diff --git a/src/unix/bsd/apple/mod.rs b/src/unix/bsd/apple/mod.rs
 index 4b2c3e0..3d96ed9 100644
 --- a/src/unix/bsd/apple/mod.rs
