@@ -54,6 +54,13 @@ if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]]; then
   exit 1
 fi
 
+check_error(){
+  if (( $1 )); then
+    echo $2
+    exit $1
+  fi
+}
+
 check_for(){
   if [ ! -e ${1} ]; then
     echo "${1} does not exist!"
@@ -95,6 +102,7 @@ bitrig_build(){
   LDFLAGS="-lc++ -lc++abi"
 
   cc ${CXXFLAGS} -o ${TOP}/bin/rustc -Wl,--start-group ${TOP}/../stage2/driver.o ${RUST_DEPS} -L${TOP}/../stage1/libs/llvm -L${TOP}/../stage1/libs -L${TOP}/../stage1/libs/llvm ${SUP_LIBS} ${LLVM_LIBS} ${LDFLAGS} -Wl,--end-group
+  check_error $? "Failed to link ${TARGET} rustc"
   cp ${TOP}/../stage1/libs/*.a ${TOP}/lib
   cp ${TOP}/../stage2/rust-libs/*.rlib ${TOP}/lib
 }
@@ -102,6 +110,7 @@ bitrig_build(){
 bitrig_test(){
   cd ${TOP}
   ${TOP}/bin/rustc -L${TOP}/lib ${TOP}/../tests/hw.rs
+  check_error $? "Failed to compile Hellow, World! test with ${TARGET} rustc"
   ./hw
 }
 
@@ -109,6 +118,7 @@ bitrig(){
   setup
   bitrig_build
   bitrig_test
+  date > .stage3
 }
 
 ### NETBSD FUNCTIONS ###
@@ -130,6 +140,7 @@ netbsd_build(){
   LDFLAGS="-L /usr/pkg/gcc49/x86_64--netbsd/lib/ `${TOP}/../stage1/install/bin/llvm-config --ldflags` -v -lstdc++"
 
   ${CC} ${CXXFLAGS} -o ${TOP}/bin/rustc -Wl,--start-group ${TOP}/../stage2/driver.o ${RUST_DEPS} -L${TOP}/../stage1/libs/llvm -L${TOP}/../stage1/libs -L${TOP}/../stage1/libs/llvm ${SUP_LIBS} ${LLVM_LIBS} ${LDFLAGS} -Wl,--end-group
+  check_error $? "Failed to link ${TARGET} rustc"
 
   cp ${TOP}/../stage1/libs/*.a ${TOP}/lib
   cp ${TOP}/../stage2/rust-libs/*.rlib ${TOP}/lib
@@ -138,6 +149,7 @@ netbsd_build(){
 netbsd_test(){
   cd ${TOP}
   ${TOP}/bin/rustc -g -Z verbose -L${TOP}/lib ${TOP}/../hw.rs
+  check_error $? "Failed to compile Hellow, World! test with ${TARGET} rustc"
   ./hw
 }
 
@@ -145,6 +157,7 @@ netbsd(){
   setup
   netbsd_build
   netbsd_test
+  date > .stage3
 }
 
 check

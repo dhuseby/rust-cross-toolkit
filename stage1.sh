@@ -57,6 +57,13 @@ if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]]; then
   exit 1
 fi
 
+check_error(){
+  if (( $1 )); then
+    echo $2
+    exit $1
+  fi
+}
+
 setup(){
   echo "Creating stage1"
   mkdir -p stage1
@@ -108,10 +115,7 @@ patch_src(){
     if [ ! -e .patched ]; then
       echo "Patching ${TOP}/${1} with ${PATCH}"
       patch -p1 < ${PATCH}
-      if (( $? )); then
-        echo "Failed to patch ${1}"
-        exit 1
-      fi
+      check_error $? "Failed to patch ${1}"
       date > .patched
     else
       echo "${1} already patched on:" `cat .patched`
@@ -187,10 +191,7 @@ netbsd_build_llvm(){
   cd llvm-build
   ../llvm/configure --prefix=${LLVM_INSTALL} --enable-debug-symbols
   #../llvm/configure --prefix=${LLVM_INSTALL}
-  if (( $? )); then
-    echo "Failed to configure LLVM"
-    exit $?
-  fi
+  check_error $? "Failed to configure LLVM"
   ${MAKE} -j2 VERBOSE=1
   ${MAKE} VERBOSE=1 install
 

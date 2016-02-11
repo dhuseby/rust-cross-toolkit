@@ -54,6 +54,13 @@ if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]]; then
   exit 1
 fi
 
+check_error(){
+  if (( $1 )); then
+    echo $2
+    exit $1
+  fi
+}
+
 check_for(){
   if [ ! -e ${1} ]; then
     echo "${1} does not exist!"
@@ -130,10 +137,7 @@ patch_src(){
     if [ ! -e .patched ]; then
       echo "Patching ${TOP}/${1} with ${PATCH}"
       patch -p1 < ${PATCH}
-      if (( $? )); then
-        echo "Failed to patch ${1}"
-        exit 1
-      fi
+      check_error $? "Failed to patch ${1}"
       date > .patched
     else
       echo "${1} already patched on:" `cat .patched`
@@ -196,18 +200,12 @@ linux_build(){
       if [ ${lib} != "libc" ]; then
         LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
         ${RUSTC} --target ${CFG_COMPILER_HOST_TRIPLE} ${RUST_FLAGS} --crate-type lib -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
-        if (( $? )); then
-          echo "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
-          exit 1
-        fi
+        check_error $? "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
       else
         LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
         ${RUSTC} --target ${CFG_COMPILER_HOST_TRIPLE} ${RUST_FLAGS} --cfg stdbuild -L${DF_LIB_DIR} -L${DF_LIB_DIR}/llvm -L${RS_LIB_DIR} ${RUST_SRC}/src/lib${lib}/src/lib.rs -o ${RS_LIB_DIR}/lib${lib}.rlib
         #i686-unknown-freebsd/stage0/bin/rustc --cfg stage0  -O --cfg rtopt -C debug-assertions=on -g -C rpath -C prefer-dynamic -C no-stack-check --target=i686-unknown-freebsd   -L "i686-unknown-freebsd/rt" -L native="/opt/rust/build/i686-unknown-freebsd/llvm/Release+Asserts/lib"  --cfg stdbuild   --out-dir i686-unknown-freebsd/stage0/lib/rustlib/i686-unknown-freebsd/lib -C extra-filename=-db5a760f ../src/liblibc/src/lib.rs
-        if (( $? )); then
-          echo "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
-          exit 1
-        fi
+        check_error $? "Failed to compile ${RS_LIB_DIR}/lib${lib}.rlib"
       fi
     fi
   done
@@ -215,10 +213,7 @@ linux_build(){
   LD_LIBRARY_PATH=${TOP}/../stage1/install/lib \
     ${RUSTC} ${RUST_FLAGS} --emit obj -o ${TOP}/driver.o --target ${CFG_COMPILER_HOST_TRIPLE} -L${DF_LIB_DIR} -L${RS_LIB_DIR} --cfg rustc ${RUST_SRC}/src/driver/driver.rs
 
-  if (( $? )); then
-    echo "Failed to compile ${RUST_SRC}/src/driver/driver.rs"
-    exit 1
-  fi
+  check_error $? "Failed to compile ${RUST_SRC}/src/driver/driver.rs"
 
   cd ${TOP}/..
   tar cvzf stage2.tgz stage2/*.o stage2/rust-libs

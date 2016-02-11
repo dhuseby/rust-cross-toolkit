@@ -19,6 +19,7 @@ HOST=`uname -s | tr '[:upper:]' '[:lower:]'`
 TARGET=
 ARCH=
 COMP=
+TRIPLE=
 STAGE=${0#*/}
 STAGE=${STAGE%%.sh}
 
@@ -53,6 +54,13 @@ if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]]; then
   usage
   exit 1
 fi
+
+check_error(){
+  if (( $1 )); then
+    echo $2
+    exit $1
+  fi
+}
 
 check_for(){
   if [ ! -e ${1} ]; then
@@ -122,10 +130,7 @@ patch_src(){
     if [ ! -e .patched ]; then
       echo "Patching ${TOP}/${1} with ${PATCH}"
       patch -p1 < ${PATCH}
-      if (( $? )); then
-        echo "Failed to patch ${1}"
-        exit 1
-      fi
+      check_error $? "Failed to patch ${1}"
       date > .patched
     else
       echo "${1} already patched on:" `cat .patched`
@@ -154,20 +159,14 @@ bitrig_configure(){
   cd ${TOP}/rust
   #./configure --disable-optimize --disable-docs --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
   ./configure --disable-docs --enable-local-rust --enable-clang --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
-  if (( $? )); then
-    echo "Failed to configure rust"
-    exit 1
-  fi
+  check_error $? "Failed to confiture ${TARGET} rust"
 }
 
 bitrig_build(){
   cd ${TOP}/rust
   export RUST_BACKTRACE=1
   ${MAKE} VERBOSE=1
-  if (( $? )); then
-    echo "Failed to build rust"
-    exit 1
-  fi
+  check_error $? "Failed to build ${TARGET} rust"
 }
 
 bitrig(){
@@ -179,6 +178,7 @@ bitrig(){
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-bitrig/rt/llvmdeps.rs
   bitrig_build
+  date > .stage4
 }
 
 ### NETBSD FUNCTIONS ###
@@ -195,20 +195,14 @@ netbsd_configure(){
   cd ${TOP}/rust
   #./configure --disable-optimize --disable-docs --enable-local-rust --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
   ./configure --disable-docs --enable-local-rust --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
-  if (( $? )); then
-    echo "Failed to configure rust"
-    exit 1
-  fi
+  check_error $? "Failed to configure ${TARGET} rust"
 }
 
 netbsd_build(){
   cd ${TOP}/rust
   export RUST_BACKTRACE=1
   ${MAKE} VERBOSE=1
-  if (( $? )); then
-    echo "Failed to build rust"
-    exit 1
-  fi
+  check_error $? "Failed to build ${TARGET} rust"
 }
 
 netbsd(){
@@ -220,6 +214,7 @@ netbsd(){
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-netbsd/rt/llvmdeps.rs
   netbsd_build
+  date > .stage4
 }
 
 check

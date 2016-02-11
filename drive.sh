@@ -67,6 +67,13 @@ if [[ -z $TARGET ]] || [[ -z $ARCH ]] || [[ -z $COMP ]] || [[ -z $OTHERMACHINE ]
   exit 1
 fi
 
+check_error(){
+  if (( $1 )); then
+    echo $2
+    exit $1
+  fi
+}
+
 setup(){
   if [[ -z $CONTINUE ]]; then
     rm -rf build*.log
@@ -107,13 +114,9 @@ build_stage(){
   fi
   if [ ! -e ${LOCK} ]; then
     ./${SCRIPT} -t ${TARGET} -a ${ARCH} -p ${COMP} ${REVOPT} ${VOPT} 2>&1 | tee ${LOG}
-    if (( $? )); then
-      echo "${SCRIPT} ${HOST} failed"
-      exit 1
-    else
-      cd ${TOP}
-      date > ${LOCK}
-    fi
+    check_error $? "${SCRIPT} ${HOST} failed"
+    cd ${TOP}
+    date > ${LOCK}
   else
     echo "Stage ${1} already built on:" `cat ${LOCK}`
   fi
@@ -162,3 +165,4 @@ if [ ${HOST} == ${TARGET} ]; then
 else
   do_host
 fi
+echo "Done!"
