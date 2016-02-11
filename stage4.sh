@@ -86,7 +86,7 @@ check(){
 }
 
 setup(){
-  if [[ -z $CONTINUE ]]; then
+  if [[ -z $CONTINUE ]] || [[ ! -e .stage4 ]]; then
     echo "Rebuilding stage4"
     rm -rf build4.log
     rm -rf stage4

@@ -70,7 +70,7 @@ check_error(){
 }
 
 setup(){
-  if [[ -z $CONTINUE ]]; then
+  if [[ -z $CONTINUE ]] || [[ ! -e .stage1 ]]; then
     echo "Rebuilding stage1"
     rm -rf build1.log
     rm -rf stage1
