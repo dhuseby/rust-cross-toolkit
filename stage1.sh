@@ -10,7 +10,7 @@ usage(){
     -h      Show this message.
     -c      Continue previous build. Default is to rebuild all.
     -r      Revision to build. Default is to build most recent snapshot revision.
-    -t      Target OS. Required. Valid options: 'bitrig', 'netbsd', 'illumos'.
+    -t      Target OS. Required. Valid options: 'bitrig', 'netbsd', 'sunos'.
     -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
     -p      Compiler. Required. Valid options: 'gcc' or 'clang'.
     -v      Verbose output from this script.
@@ -253,7 +253,7 @@ illumos_build_rust_parts(){
 }
 
 illumos_build(){
-  export PATH=/usr/pkg/gcc49/bin:$PATH
+  export PATH=/usr/gcc/4.9/bin:$PATH
   export CC="/usr/gcc/4.9/bin/gcc"
   export CXX="/usr/gcc/4.9/bin/g++"
   export CFLAGS="-g -O0"
@@ -500,7 +500,7 @@ case ${HOST} in
     MAKE=gmake
     netbsd
   ;;
-  "illumos")
+  "sunos")
     MAKE=gmake
     illumos
   ;;
