@@ -9,7 +9,7 @@ usage(){
   OPTIONS:
     -h      Show this message.
     -c      Continue previous build. Default is to rebuild all.
-    -t      Target OS. Required. Valid options: 'bitrig' or 'netbsd'.
+    -t      Target OS. Required. Valid options: 'bitrig', 'netbsd', 'illumos'.
     -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
     -p      Compiler. Required. Valid options: 'gcc' or 'clang'.
     -v      Verbose output from this script.
@@ -190,7 +190,7 @@ bitrig(){
   bitrig_configure
   apply_patches # patch after too, configure clobbers submodules
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
-  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-bitrig/rt/llvmdeps.rs
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/${ARCH}-unknown-bitrig/rt/llvmdeps.rs
   bitrig_build
   date > .stage4
 }
@@ -226,8 +226,44 @@ netbsd(){
   netbsd_configure
   apply_patches # patch after too, configure clobbers submodules
   cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
-  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/x86_64-unknown-netbsd/rt/llvmdeps.rs
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/${ARCH}-unknown-netbsd/rt/llvmdeps.rs
   netbsd_build
+  date > .stage4
+}
+
+### ILLUMOS FUNCTIONS ###
+
+illumos_configure(){
+  export CC="/usr/gcc/4.9/bin/gcc"
+  export CXX="/usr/gcc/4.9/bin/g++"
+  export AR="/usr/gcc/4/9/bin/gcc-ar"
+  export NM="/usr/gcc/4.9/bin/gcc-nm"
+  export RANLIB="/usr/gcc/4.9/bin/gcc-ranlib"
+  PREFIX="/usr/local"
+
+  # configure rust
+  cd ${TOP}/rust
+  #./configure --disable-optimize --disable-docs --enable-local-rust --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  ./configure --disable-docs --enable-local-rust --local-rust-root=${TOP}/../stage3 --prefix=${PREFIX}
+  check_error $? "Failed to configure ${TARGET} rust"
+}
+
+illumos_build(){
+  cd ${TOP}/rust
+  export RUST_BACKTRACE=1
+  ${MAKE} VERBOSE=1
+  check_error $? "Failed to build ${TARGET} rust"
+}
+
+illumos(){
+  setup
+  clone
+  apply_patches # patch before configure just in case
+  illumos_configure
+  apply_patches # patch after too, configure clobbers submodules
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/src/librustc_llvm/
+  cp ${TOP}/../stage1/llvmdeps.rs ${TOP}/rust/${ARCH}-sun-solaris/rt/llvmdeps.rs
+  illumos_build
   date > .stage4
 }
 

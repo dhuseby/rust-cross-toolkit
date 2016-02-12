@@ -9,7 +9,7 @@ usage(){
   OPTIONS:
     -h      Show this message.
     -c      Continue previous build. Default is to rebuild all.
-    -t      Target OS. Required. Valid options: 'bitrig' or 'netbsd'.
+    -t      Target OS. Required. Valid options: 'bitrig', 'netbsd', 'illumos'.
     -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
     -p      Compiler. Required. Valid options: 'gcc' or 'clang'.
     -v      Verbose output from this script.

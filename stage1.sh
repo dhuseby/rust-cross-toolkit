@@ -10,7 +10,7 @@ usage(){
     -h      Show this message.
     -c      Continue previous build. Default is to rebuild all.
     -r      Revision to build. Default is to build most recent snapshot revision.
-    -t      Target OS. Required. Valid options: 'bitrig' or 'netbsd'.
+    -t      Target OS. Required. Valid options: 'bitrig', 'netbsd', 'illumos'.
     -a      CPU archictecture. Required. Valid options: 'x86_64' or 'i686'.
     -p      Compiler. Required. Valid options: 'gcc' or 'clang'.
     -v      Verbose output from this script.
@@ -191,6 +191,101 @@ linux(){
   apply_patches
   linux_build
 }
+
+### ILLUMOS FUNCTIONS ###
+
+illumos_build_llvm(){
+  mkdir -p ${LLVM_INSTALL}
+  mkdir -p ${LIB_DIR}
+  mkdir -p ${LLVM_DIR}
+
+  # compile llvm
+  cd ${TOP}/rust/src
+  mkdir -p llvm-build
+  cd llvm-build
+  ../llvm/configure --prefix=${LLVM_INSTALL} --enable-debug-symbols
+  #../llvm/configure --prefix=${LLVM_INSTALL}
+  check_error $? "Failed to configure LLVM"
+  ${MAKE} -j2 VERBOSE=1
+  ${MAKE} VERBOSE=1 install
+
+  # copy the llvm lib files to the LLVM TARGET
+  cp `${LLVM_INSTALL}/bin/llvm-config --libfiles` ${LLVM_DIR}
+}
+
+illumos_build_rust_parts(){
+  # build the rustllvm pieces
+  cd ${TOP}/rust/src/rustllvm
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` PassWrapper.cpp
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` RustWrapper.cpp
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ExecutionEngineWrapper.cpp
+  ${CXX} ${CXXFLAGS} -c `${LLVM_INSTALL}/bin/llvm-config --cxxflags` ArchiveWrapper.cpp
+  ar rcs librustllvm.a ArchiveWrapper.o ExecutionEngineWrapper.o PassWrapper.o RustWrapper.o
+  cp librustllvm.a ${LIB_DIR}
+
+  # build libcompiler-rt.a
+  cd ${TOP}/rust/src/compiler-rt
+  cmake -D_LLVM_CMAKE_DIR=${LLVM_INSTALL}/share/llvm/cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
+  ${MAKE} VERBOSE=1
+  cp ./lib/netbsd/libclang_rt.builtins-x86_64.a ${LIB_DIR}/libcompiler-rt.a
+
+  # build libbacktrace.a
+  cd ${TOP}/rust/src
+  ln -s libbacktrace include
+  cd libbacktrace
+  ./configure --host=${ARCH}-sun-solaris
+  ${MAKE} VERBOSE=1
+  cp .libs/libbacktrace.a ${LIB_DIR}
+  cd ..
+  rm -rf include
+
+  cd ${TOP}/rust/src/rt
+  ${CC} ${CFLAGS} -c -fPIC -o rust_builtin.o rust_builtin.c
+  ar rcs ${LIB_DIR}/librust_builtin.a rust_builtin.o
+
+  cd ${TOP}/rust/src/rt
+  ${CC} ${CFLAGS} -c -fPIC -o miniz.o miniz.c
+  ar rcs ${LIB_DIR}/libminiz.a miniz.o
+
+  cd ${TOP}/rust/src/rt/hoedown
+  ${MAKE} VERBOSE=1 libhoedown.a
+  cp libhoedown.a ${LIB_DIR}
+}
+
+illumos_build(){
+  export PATH=/usr/pkg/gcc49/bin:$PATH
+  export CC="/usr/gcc/4.9/bin/gcc"
+  export CXX="/usr/gcc/4.9/bin/g++"
+  export CFLAGS="-g -O0"
+  export CXXFLAGS="-g -O0"
+
+  LLVM_INSTALL=${TOP}/install
+  LIB_DIR=${TOP}/libs
+  LLVM_DIR=${LIB_DIR}/llvm
+
+  netbsd_build_llvm
+  netbsd_build_rust_parts
+
+  # Copy Illumos system libraries
+  mkdir -p ${LIB_DIR}/usr/lib
+  cp -r /usr/lib/* ${LIB_DIR}/usr/lib/
+
+  cd ${TOP}/..
+  python ${TOP}/rust/src/etc/mklldeps.py stage1/llvmdeps.rs "x86 arm mips ipo bitreader bitwriter linker asmparser mcjit interpreter instrumentation" true "${LLVM_INSTALL}/bin/llvm-config" "stdc++" "0"
+
+  cd ${TOP}/..
+  tar cvzf stage1.tgz stage1/libs stage1/llvmdeps.rs
+
+  echo "Please copy stage1.tgz onto your Linux machine and extract it"
+}
+
+illumos(){
+  setup
+  clone
+  apply_patches
+  illumos_build
+}
+
 
 ### NETBSD FUNCTIONS ###
 
@@ -405,6 +500,9 @@ case ${HOST} in
     MAKE=gmake
     netbsd
   ;;
+  "illumos")
+    MAKE=gmake
+    illumos
   *)
     echo "${OS} unsupported at the moment"
     exit 1
