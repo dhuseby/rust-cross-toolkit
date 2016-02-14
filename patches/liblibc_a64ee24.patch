@@ -1,3 +1,193 @@
+diff --git a/.travis.yml b/.travis.yml
+index b522002..d6d3ab5 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -3,6 +3,7 @@ sudo: required
+ dist: trusty
+ rust:
+   - 1.0.0
++  - stable
+   - beta
+   - nightly
+ services:
+@@ -10,8 +11,11 @@ services:
+ script:
+   - if [[ $TRAVIS_RUST_VERSION = nightly* ]]; then
+       sh ci/run-travis.sh;
++    elif [[ $TRAVIS_RUST_VERSION = "1.0.0" ]]; then
++      cargo build;
+     else
+       cargo build;
++      cargo build --no-default-features;
+     fi
+ os:
+   - linux
+diff --git a/Cargo.toml b/Cargo.toml
+index a21ec67..28e5b33 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,7 +1,7 @@
+ [package]
+ 
+ name = "libc"
+-version = "0.2.6"
++version = "0.2.7"
+ authors = ["The Rust Project Developers"]
+ license = "MIT/Apache-2.0"
+ readme = "README.md"
+@@ -14,4 +14,5 @@ other common platform libraries.
+ """
+ 
+ [features]
+-default = []
++default = ["use_std"]
++use_std = []
+diff --git a/README.md b/README.md
+index 801b73d..69ebada 100644
+--- a/README.md
++++ b/README.md
+@@ -24,6 +24,15 @@ Next, add this to your crate root:
+ extern crate libc;
+ ```
+ 
++Currently libc by default links to the standard library, but if you would
++instead like to use libc in a `#![no_std]` situation or crate you can request
++this via:
++
++```toml
++[dependencies]
++libc = { version = "0.2", default-features = false }
++```
++
+ ## What is libc?
+ 
+ The primary purpose of this crate is to provide all of the definitions necessary
+diff --git a/libc-test/Cargo.lock b/libc-test/Cargo.lock
+index fd2a533..e5564c5 100644
+--- a/libc-test/Cargo.lock
++++ b/libc-test/Cargo.lock
+@@ -3,7 +3,7 @@ name = "libc-test"
+ version = "0.1.0"
+ dependencies = [
+  "ctest 0.1.0 (git+https://github.com/alexcrichton/ctest)",
+- "libc 0.2.6",
++ "libc 0.2.7",
+ ]
+ 
+ [[package]]
+@@ -59,7 +59,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ 
+ [[package]]
+ name = "libc"
+-version = "0.2.6"
++version = "0.2.7"
+ 
+ [[package]]
+ name = "log"
+diff --git a/libc-test/build.rs b/libc-test/build.rs
+index 1c71204..9c3b592 100644
+--- a/libc-test/build.rs
++++ b/libc-test/build.rs
+@@ -145,6 +145,7 @@ fn main() {
+         cfg.header("sys/epoll.h");
+         cfg.header("sys/eventfd.h");
+         cfg.header("sys/prctl.h");
++        cfg.header("sys/sendfile.h");
+         cfg.header("sys/vfs.h");
+         cfg.header("sys/syscall.h");
+         if !musl {
+diff --git a/src/lib.rs b/src/lib.rs
+index bcb83fc..c9d7701 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -82,7 +82,9 @@
+                                reason = "use `libc` from crates.io",
+                                issue = "27783"))]
+ 
+-#[cfg(all(not(stdbuild), not(dox)))]
++#![cfg_attr(not(feature = "use_std"), no_std)]
++
++#[cfg(all(not(stdbuild), not(dox), feature = "use_std"))]
+ extern crate std as core;
+ 
+ #[macro_use] mod macros;
+diff --git a/src/unix/bsd/apple/mod.rs b/src/unix/bsd/apple/mod.rs
+index 4b2c3e0..3d96ed9 100644
+--- a/src/unix/bsd/apple/mod.rs
++++ b/src/unix/bsd/apple/mod.rs
+@@ -250,6 +250,13 @@ s! {
+         pub l_type: ::c_short,
+         pub l_whence: ::c_short,
+     }
++
++    pub struct sf_hdtr {
++        pub headers: *mut ::iovec,
++        pub hdr_cnt: ::c_int,
++        pub trailers: *mut ::iovec,
++        pub trl_cnt: ::c_int,
++    }
+ }
+ 
+ pub const EXIT_FAILURE: ::c_int = 1;
+@@ -914,6 +921,12 @@ extern {
+                     id: ::c_int,
+                     data: *mut ::c_char) -> ::c_int;
+     pub fn sethostname(name: *const ::c_char, len: ::c_int) -> ::c_int;
++    pub fn sendfile(fd: ::c_int,
++                    s: ::c_int,
++                    offset: ::off_t,
++                    len: *mut ::off_t,
++                    hdtr: *mut ::sf_hdtr,
++                    flags: ::c_int) -> ::c_int;
+ }
+ 
+ cfg_if! {
+diff --git a/src/unix/bsd/freebsdlike/freebsd.rs b/src/unix/bsd/freebsdlike/freebsd.rs
+index ab2d6fc..d6fa96f 100644
+--- a/src/unix/bsd/freebsdlike/freebsd.rs
++++ b/src/unix/bsd/freebsdlike/freebsd.rs
+@@ -4,6 +4,9 @@ pub type fsfilcnt_t = ::uint64_t;
+ pub const PTHREAD_STACK_MIN: ::size_t = 2048;
+ pub const KERN_PROC_PATHNAME: ::c_int = 12;
+ pub const SIGSTKSZ: ::size_t = 34816;
++pub const SF_NODISKIO: ::c_int = 0x00000001;
++pub const SF_MNOWAIT: ::c_int = 0x00000002;
++pub const SF_SYNC: ::c_int = 0x00000004;
+ 
+ extern {
+     pub fn __error() -> *mut ::c_int;
+diff --git a/src/unix/bsd/freebsdlike/mod.rs b/src/unix/bsd/freebsdlike/mod.rs
+index d2e3a4e..7469012 100644
+--- a/src/unix/bsd/freebsdlike/mod.rs
++++ b/src/unix/bsd/freebsdlike/mod.rs
+@@ -139,6 +139,13 @@ s! {
+         pub l_whence: ::c_short,
+         pub l_sysid: ::c_int,
+     }
++
++    pub struct sf_hdtr {
++        pub headers: *mut ::iovec,
++        pub hdr_cnt: ::c_int,
++        pub trailers: *mut ::iovec,
++        pub trl_cnt: ::c_int,
++    }
+ }
+ 
+ pub const EXIT_FAILURE: ::c_int = 1;
+@@ -616,6 +623,13 @@ extern {
+     pub fn sched_setscheduler(pid: ::pid_t, policy: ::c_int, param: *const sched_param) -> ::c_int;
+     pub fn sched_getscheduler(pid: ::pid_t) -> ::c_int;
+     pub fn memrchr(cx: *const ::c_void, c: ::c_int, n: ::size_t) -> *mut ::c_void;
++    pub fn sendfile(fd: ::c_int,
++                    s: ::c_int,
++                    offset: ::off_t,
++                    nbytes: ::size_t,
++                    hdtr: *mut ::sf_hdtr,
++                    sbytes: *mut ::off_t,
++                    flags: ::c_int) -> ::c_int;
+ }
+ 
+ cfg_if! {
 diff --git a/src/unix/bsd/openbsdlike/bitrig.rs b/src/unix/bsd/openbsdlike/bitrig.rs
 index e6cf384..ab9cc9f 100644
 --- a/src/unix/bsd/openbsdlike/bitrig.rs
@@ -12,23 +202,37 @@ index e6cf384..ab9cc9f 100644
  
  pub const ST_NOSUID: ::c_ulong = 2;
 diff --git a/src/unix/bsd/openbsdlike/mod.rs b/src/unix/bsd/openbsdlike/mod.rs
-index 2f4b5be..419a220 100644
+index 2f4b5be..04a2faa 100644
 --- a/src/unix/bsd/openbsdlike/mod.rs
 +++ b/src/unix/bsd/openbsdlike/mod.rs
-@@ -365,6 +365,8 @@ pub const _SC_PAGESIZE : ::c_int = 28;
+@@ -365,7 +365,12 @@ pub const _SC_PAGESIZE : ::c_int = 28;
  pub const _SC_PAGE_SIZE: ::c_int = _SC_PAGESIZE;
  pub const _SC_FSYNC : ::c_int = 29;
  
 +pub const SIGSTKSZ : ::size_t = 40960;
 +
  pub const KERN_PROC_ARGV: ::c_int = 1;
++pub const KERN_PROC_NARGV: ::c_int = 2;
++pub const KERN_PROC_ENV: ::c_int = 3;
++pub const KERN_PROC_NENV: ::c_int = 4;
  
  pub const Q_GETQUOTA: ::c_int = 0x300;
+ pub const Q_SETQUOTA: ::c_int = 0x400;
 diff --git a/src/unix/bsd/openbsdlike/netbsd.rs b/src/unix/bsd/openbsdlike/netbsd.rs
-index 9ddb253..cd3200e 100644
+index 9ddb253..b350f1d 100644
 --- a/src/unix/bsd/openbsdlike/netbsd.rs
 +++ b/src/unix/bsd/openbsdlike/netbsd.rs
-@@ -269,8 +269,6 @@ pub const _SC_SHARED_MEMORY_OBJECTS : ::c_int = 87;
+@@ -116,7 +116,8 @@ s! {
+         pub si_code: ::c_int,
+         pub si_errno: ::c_int,
+         __pad1: ::c_int,
+-        __pad2: [u64; 14],
++        pub si_addr: *mut ::c_void,
++        __pad2: [u64; 13],
+     }
+ 
+     pub struct pthread_attr_t {
+@@ -269,8 +270,6 @@ pub const _SC_SHARED_MEMORY_OBJECTS : ::c_int = 87;
  pub const _SC_SYNCHRONIZED_IO : ::c_int = 31;
  pub const _SC_TIMERS : ::c_int = 44;
  
@@ -37,7 +241,7 @@ index 9ddb253..cd3200e 100644
  pub const FD_SETSIZE: usize = 0x100;
  
  pub const ST_NOSUID: ::c_ulong = 8;
-@@ -372,4 +370,11 @@ extern {
+@@ -372,4 +371,11 @@ extern {
      pub fn pthread_setname_np(t: ::pthread_t,
                                name: *const ::c_char,
                                arg: *mut ::c_void) -> ::c_int;
@@ -74,3 +278,102 @@ index c56246a..9c2d22b 100644
      pub fn sigaction(signum: ::c_int,
                       act: *const sigaction,
                       oldact: *mut sigaction) -> ::c_int;
+diff --git a/src/unix/notbsd/linux/mips.rs b/src/unix/notbsd/linux/mips.rs
+index 021902d..d9baf72 100644
+--- a/src/unix/notbsd/linux/mips.rs
++++ b/src/unix/notbsd/linux/mips.rs
+@@ -498,4 +498,10 @@ extern {
+                        flags: ::c_int) -> ::c_int;
+     pub fn eventfd(init: ::c_uint, flags: ::c_int) -> ::c_int;
+     pub fn ptrace(request: ::c_uint, ...) -> ::c_long;
++    pub fn pthread_attr_getaffinity_np(attr: *const ::pthread_attr_t,
++                                       cpusetsize: ::size_t,
++                                       cpuset: *mut ::cpu_set_t) -> ::c_int;
++    pub fn pthread_attr_setaffinity_np(attr: *mut ::pthread_attr_t,
++                                       cpusetsize: ::size_t,
++                                       cpuset: *const ::cpu_set_t) -> ::c_int;
+ }
+diff --git a/src/unix/notbsd/linux/mod.rs b/src/unix/notbsd/linux/mod.rs
+index 9534542..5a392c0 100644
+--- a/src/unix/notbsd/linux/mod.rs
++++ b/src/unix/notbsd/linux/mod.rs
+@@ -1,5 +1,7 @@
+ //! Linux-specific definitions for linux-like values
+ 
++use dox::mem;
++
+ pub type useconds_t = u32;
+ pub type dev_t = u64;
+ pub type socklen_t = u32;
+@@ -185,6 +187,31 @@ s! {
+     }
+ }
+ 
++f! {
++    pub fn CPU_ZERO(cpuset: &mut cpu_set_t) -> () {
++        for slot in cpuset.bits.iter_mut() {
++            *slot = 0;
++        }
++    }
++
++    pub fn CPU_SET(cpu: usize, cpuset: &mut cpu_set_t) -> () {
++        let size = mem::size_of_val(&cpuset.bits[0]);
++        let (idx, offset) = (cpu / size, cpu % size);
++        cpuset.bits[idx] |= 1 << offset;
++        ()
++    }
++
++    pub fn CPU_ISSET(cpu: usize, cpuset: &cpu_set_t) -> bool {
++        let size = mem::size_of_val(&cpuset.bits[0]);
++        let (idx, offset) = (cpu / size, cpu % size);
++        0 != (cpuset.bits[idx] & (1 << offset))
++    }
++
++    pub fn CPU_EQUAL(set1: &cpu_set_t, set2: &cpu_set_t) -> bool {
++        set1.bits == set2.bits
++    }
++}
++
+ pub const FILENAME_MAX: ::c_uint = 4096;
+ pub const L_tmpnam: ::c_uint = 20;
+ pub const _PC_NAME_MAX: ::c_int = 3;
+diff --git a/src/unix/notbsd/linux/other/mod.rs b/src/unix/notbsd/linux/other/mod.rs
+index ed0a337..0a65f95 100644
+--- a/src/unix/notbsd/linux/other/mod.rs
++++ b/src/unix/notbsd/linux/other/mod.rs
+@@ -438,6 +438,12 @@ extern {
+                        flags: ::c_int) -> ::c_int;
+     pub fn eventfd(init: ::c_uint, flags: ::c_int) -> ::c_int;
+     pub fn ptrace(request: ::c_uint, ...) -> ::c_long;
++    pub fn pthread_attr_getaffinity_np(attr: *const ::pthread_attr_t,
++                                       cpusetsize: ::size_t,
++                                       cpuset: *mut ::cpu_set_t) -> ::c_int;
++    pub fn pthread_attr_setaffinity_np(attr: *mut ::pthread_attr_t,
++                                       cpusetsize: ::size_t,
++                                       cpuset: *const ::cpu_set_t) -> ::c_int;
+ }
+ 
+ cfg_if! {
+diff --git a/src/unix/notbsd/mod.rs b/src/unix/notbsd/mod.rs
+index f213a52..83b4f0b 100644
+--- a/src/unix/notbsd/mod.rs
++++ b/src/unix/notbsd/mod.rs
+@@ -624,6 +624,10 @@ extern {
+     pub fn fstatfs(fd: ::c_int, buf: *mut statfs) -> ::c_int;
+     pub fn memrchr(cx: *const ::c_void, c: ::c_int, n: ::size_t) -> *mut ::c_void;
+     pub fn syscall(num: ::c_long, ...) -> ::c_long;
++    pub fn sendfile(out_fd: ::c_int,
++                    in_fd: ::c_int,
++                    offset: *mut off_t,
++                    count: ::size_t) -> ::ssize_t;
+     pub fn splice(fd_in: ::c_int,
+                   off_in: *mut ::loff_t,
+                   fd_out: ::c_int,
+@@ -638,7 +642,6 @@ extern {
+                     iov: *const ::iovec,
+                     nr_segs: ::size_t,
+                     flags: ::c_uint) -> ::ssize_t;
+-
+ }
+ 
+ cfg_if! {
