@@ -107,6 +107,15 @@ send_file() {
 build_stage(){
   SCRIPT="stage${1}.sh"
   LOG="build${1}.log"
+  if [[ ! -z $REV ]]; then
+    ROPT="-r ${REV}"
+  fi
+  if [[ ! -z $VERBOSE ]]; then
+    VOPT="-v"
+  fi
+  if [[ ! -z $CONTINUE ]]; then
+    COPT="-c"
+  fi
   ROPT=$(set_opt_if $REV "-r ${REV}")
   VOPT=$(set_opt_if $VERBOSE "-v")
   COPT=$(set_opt_if $CONTINUE "-c")
