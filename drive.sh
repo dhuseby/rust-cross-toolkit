@@ -116,9 +116,6 @@ build_stage(){
   if [[ ! -z $CONTINUE ]]; then
     COPT="-c"
   fi
-  ROPT=$(set_opt_if $REV "-r ${REV}")
-  VOPT=$(set_opt_if $VERBOSE "-v")
-  COPT=$(set_opt_if $CONTINUE "-c")
 
   # execute the stage script
   ./${SCRIPT} -t ${TARGET} -a ${ARCH} -p ${COMP} ${ROPT} ${VOPT} ${COPT} 2>&1 | tee ${LOG}
