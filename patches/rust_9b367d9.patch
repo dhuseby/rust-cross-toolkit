@@ -1,9 +1,3 @@
-diff --git a/src/liblibc b/src/liblibc
---- a/src/liblibc
-+++ b/src/liblibc
-@@ -1 +1 @@
--Subproject commit a64ee24718c0289b82a77d692cf56f8a1226de51
-+Subproject commit a64ee24718c0289b82a77d692cf56f8a1226de51-dirty
 diff --git a/src/libstd/os/netbsd/raw.rs b/src/libstd/os/netbsd/raw.rs
 index 7eb3f6d..bc30c1a 100644
 --- a/src/libstd/os/netbsd/raw.rs
