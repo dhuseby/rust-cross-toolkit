@@ -201,7 +201,7 @@ illumos_build(){
 
 illumos_test(){
   cd ${TOP}
-  ${TOP}/bin/rustc -g -Z verbose -L${TOP}/lib ${TOP}/../hw.rs
+  ${TOP}/bin/rustc -g -Z verbose -L${TOP}/lib ${TOP}/../tests/hw.rs
   check_error $? "Failed to compile Hellow, World! test with ${TARGET} rustc"
   ./hw
 }

@@ -334,7 +334,7 @@ netbsd_build_rust_parts(){
   cd ${TOP}/rust/src
   ln -s libbacktrace include
   cd libbacktrace
-  ./configure --host=${ARCH}-unknown-netbsd
+  ./configure --build=${ARCH}-unknown-netbsd
   ${MAKE} VERBOSE=1
   cp .libs/libbacktrace.a ${LIB_DIR}
   cd ..
