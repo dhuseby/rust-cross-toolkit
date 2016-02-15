@@ -1,0 +1,22 @@
+diff --git a/src/liblibc b/src/liblibc
+--- a/src/liblibc
++++ b/src/liblibc
+@@ -1 +1 @@
+-Subproject commit a64ee24718c0289b82a77d692cf56f8a1226de51
++Subproject commit a64ee24718c0289b82a77d692cf56f8a1226de51-dirty
+diff --git a/src/libstd/os/netbsd/raw.rs b/src/libstd/os/netbsd/raw.rs
+index 7eb3f6d..bc30c1a 100644
+--- a/src/libstd/os/netbsd/raw.rs
++++ b/src/libstd/os/netbsd/raw.rs
+@@ -46,9 +46,9 @@ pub struct stat {
+     #[stable(feature = "raw_ext", since = "1.1.0")]
+     pub st_nlink: u32,
+     #[stable(feature = "raw_ext", since = "1.1.0")]
+-    pub st_uid: u32,
++    pub st_uid: uid_t,
+     #[stable(feature = "raw_ext", since = "1.1.0")]
+-    pub st_gid: u32,
++    pub st_gid: gid_t,
+     #[stable(feature = "raw_ext", since = "1.1.0")]
+     pub st_rdev: u64,
+     #[stable(feature = "raw_ext", since = "1.1.0")]
