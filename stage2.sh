@@ -193,7 +193,8 @@ linux_build(){
   cd ${TOP}/../stage1/rust
   export CFG_VER_HASH=`git rev-parse HEAD`
   cd ${TOP}
-  export CFG_VERSION="1.8.0-dev"
+  #export CFG_VERSION="1.8.0-dev"
+  export CFG_VERSION="1.8.0-dev (9b367d9d8 2016-02-14)"
   export CFG_RELEASE="${TARGET}-cross"
   export CFG_VER_DATE="`date`"
   export CFG_COMPILER_HOST_TRIPLE="${ARCH}-unknown-${TARGET}"
