@@ -1,3 +1,25 @@
+diff --git a/src/librustc_metadata/creader.rs b/src/librustc_metadata/creader.rs
+index 35d7a0d..839522d 100644
+--- a/src/librustc_metadata/creader.rs
++++ b/src/librustc_metadata/creader.rs
+@@ -260,12 +260,14 @@ impl<'a> CrateReader<'a> {
+         let crate_rustc_version = decoder::crate_rustc_version(metadata.as_slice());
+         if crate_rustc_version != Some(rustc_version()) {
+             span_fatal!(self.sess, span, E0514,
+-                        "the crate `{}` has been compiled with {}, which is \
+-                         incompatible with this version of rustc",
++                        "the crate `{}` has been compiled with '{}', which is \
++                         incompatible with this version of rustc \
++                         -- rustc_version: '{}'",
+                         name,
+                         crate_rustc_version
+                             .as_ref().map(|s| &**s)
+-                            .unwrap_or("an old version of rustc")
++                            .unwrap_or("an old version of rustc"),
++                        rustc_version()
+             );
+         }
+     }
 diff --git a/src/libstd/os/netbsd/raw.rs b/src/libstd/os/netbsd/raw.rs
 index 7eb3f6d..bc30c1a 100644
 --- a/src/libstd/os/netbsd/raw.rs
