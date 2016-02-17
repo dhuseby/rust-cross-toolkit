@@ -228,7 +228,7 @@ illumos_build_rust_parts(){
   cd ${TOP}/rust/src/compiler-rt
   cmake -D_LLVM_CMAKE_DIR=${LLVM_INSTALL}/share/llvm/cmake -DLLVM_CONFIG_PATH=${LLVM_INSTALL}/bin/llvm-config
   ${MAKE} VERBOSE=1
-  cp ./lib/netbsd/libclang_rt.builtins-x86_64.a ${LIB_DIR}/libcompiler-rt.a
+  cp ./lib/sunos/libclang_rt.builtins-x86_64.a ${LIB_DIR}/libcompiler-rt.a
 
   # build libbacktrace.a
   cd ${TOP}/rust/src
@@ -268,8 +268,8 @@ illumos_build(){
   LIB_DIR=${TOP}/libs
   LLVM_DIR=${LIB_DIR}/llvm
 
-  netbsd_build_llvm
-  netbsd_build_rust_parts
+  illumos_build_llvm
+  illumos_build_rust_parts
 
   # Copy Illumos system libraries
   mkdir -p ${LIB_DIR}/usr/lib
